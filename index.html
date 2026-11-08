@@ -1,0 +1,3609 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>stotco sheets</title>
+<style>
+  /* Geteilte Setliste (?s=): nur ansehen und transponieren */
+  body.nur-lesen #btn-export, body.nur-lesen #btn-import, body.nur-lesen #btn-einstellungen,
+  body.nur-lesen .griff, body.nur-lesen .sec-ops, body.nur-lesen .sl-hinzu,
+  body.nur-lesen .nur-lokal { display: none !important; }
+  body.nur-lesen .sl-kopf input { pointer-events: none; border-color: transparent; background: transparent; }
+  .teilen-panel { margin: 0.6rem 0 1rem; }
+  .teilen-panel input { width: 100%; font: 0.8rem monospace; margin-top: 0.4rem; }
+  :root {
+    --paper: #f6f3ea;
+    --card: #fdfcf7;
+    --ink: #17140f;
+    --muted: #7c7469;
+    --line: #cfc7b6;
+    --barline: #3a352c;
+    --accent: #a33327; /* Real-Book-Rot */
+    --c-strophe: #3d6b9e;
+    --c-refrain: #a33327;
+    --c-bridge: #4a7c46;
+    --c-intro: #6b6459;
+    --c-solo: #7a4f8f;
+    --c-zwischenspiel: #3f7f7a;
+    --c-vorrefrain: #b0722a;
+    --font-chart: 'Avenir Next Condensed', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+    --font-body: 'Charter', 'Iowan Old Style', Palatino, Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  header.chrome {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6rem 1.2rem;
+    border-bottom: 2px solid var(--ink);
+  }
+  header.chrome h1 {
+    font-family: var(--font-chart);
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: lowercase;
+  }
+  header.chrome h1 .accent { color: var(--accent); }
+  header.chrome .spacer { flex: 1; }
+  button {
+    font-family: var(--font-chart);
+    font-size: 0.92rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--barline);
+    border-radius: 3px;
+    background: var(--card);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  main { padding: 1.2rem clamp(1rem, 4vw, 3rem); max-width: 1180px; margin: 0 auto; }
+  #export-reminder {
+    display: none;
+    background: #f6e7d6;
+    border: 1px solid var(--accent);
+    border-radius: 3px;
+    padding: 0.4rem 0.8rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+  }
+  #export-reminder.visible { display: block; }
+
+  /* ---------- Bibliothek ---------- */
+  .lib-suche {
+    width: 100%;
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.5rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: var(--card);
+    margin: 0.8rem 0 1.2rem;
+  }
+  .lib-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.8rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.5rem;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .lib-item:hover { border-color: var(--accent); }
+  .lib-item .t { font-family: var(--font-chart); font-weight: 700; font-size: 1.1rem; }
+  .lib-item .a { color: var(--muted); }
+  .lib-item .k {
+    margin-left: auto;
+    font-family: var(--font-chart);
+    font-weight: 700;
+    color: var(--accent);
+  }
+  .lib-leer { color: var(--muted); font-style: italic; padding: 2rem 0; }
+  .lib-item .loeschen {
+    margin-left: 0.8rem; padding: 0.1rem 0.5rem; font-size: 0.85rem;
+    color: var(--muted); border-color: var(--line);
+  }
+  .lib-item .loeschen:hover, .lib-item .loeschen.bestaetigen {
+    color: #fff; background: var(--accent); border-color: var(--accent);
+  }
+
+  /* ---------- Songansicht: Chart-Kopf ---------- */
+  .sheet-head {
+    display: flex;
+    align-items: flex-end;
+    gap: 1.2rem;
+    border-bottom: 3px double var(--ink);
+    padding-bottom: 0.6rem;
+    margin-bottom: 1.4rem;
+  }
+  .sheet-head .titel {
+    font-family: var(--font-chart);
+    font-weight: 700;
+    font-size: 2.1rem;
+    line-height: 1.05;
+  }
+  .sheet-head .kuenstler { color: var(--muted); font-style: italic; }
+  .sheet-head .meta {
+    margin-left: auto;
+    display: flex;
+    gap: 1.2rem;
+    font-family: var(--font-chart);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .sheet-head .meta .label {
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .sheet-notizen { color: var(--muted); font-size: 0.92rem; margin: -0.8rem 0 1.2rem; font-style: italic; }
+
+  /* ---------- Zwei Spalten mit ziehbarer Trennlinie ---------- */
+  .sheet-body {
+    display: grid;
+    grid-template-columns: minmax(0, calc(var(--split, 55) * 1%)) 18px minmax(0, 1fr);
+    gap: 0 0.6rem;
+    align-items: start;
+  }
+  .split-divider {
+    align-self: stretch;
+    cursor: col-resize;
+    position: relative;
+    touch-action: none;
+  }
+  .split-divider::before {
+    content: '';
+    position: absolute;
+    left: 50%; top: 0; bottom: 0;
+    width: 1px;
+    background: var(--line);
+  }
+  .split-divider:hover::before, .split-divider.zieht::before {
+    width: 3px; margin-left: -1px;
+    background: var(--accent);
+  }
+  body.stage-mode .split-divider::before { background: #3a352c; }
+  @media (max-width: 760px) {
+    .sheet-body { grid-template-columns: 1fr; }
+    .split-divider { display: none; }
+  }
+
+  /* Abschnittsmarke (rehearsal mark) — die Farbkopplung beider Spalten */
+  .sec-mark {
+    display: inline-block;
+    font-family: var(--font-chart);
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #fff;
+    background: var(--sec, var(--c-intro));
+    padding: 0.12em 0.55em;
+    border-radius: 2px;
+  }
+
+  .lyr-sec { margin-bottom: 1.3rem; }
+  .lyr-sec .zeilen {
+    margin-top: 0.35rem;
+    line-height: 1.55;
+    font-size: 1.04rem;
+    white-space: pre-line;
+  }
+  .lyr-sec .zeilen:empty::after { content: '(instrumental)'; color: var(--muted); font-style: italic; }
+
+  .grid-sec { margin-bottom: 1.5rem; }
+  .grid-sec .grid-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    margin-bottom: 0.35rem;
+  }
+  .grid-sec .taktart {
+    font-family: var(--font-chart);
+    font-weight: 600;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .bars {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 2px solid var(--sec, var(--barline));
+    background: var(--card);
+  }
+  .bar {
+    min-height: 2.6rem;
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 0.4rem;
+  }
+  .bar:not(:nth-child(4n+1)) { border-left: 1px solid var(--barline); }
+  .bar:nth-child(n+5) { border-top: 1px solid var(--barline); }
+  .bar .ch {
+    flex: 1;
+    font-family: var(--font-chart);
+    font-weight: 700;
+    font-size: 1.35rem;
+    letter-spacing: 0.01em;
+  }
+  .bar .ch sup { font-size: 0.62em; }
+  .bar .rep { color: var(--muted); text-align: center; }
+  .bar .nc { color: var(--muted); font-size: 1.05rem; }
+  /* Verdichtete Ansicht: ein Raster pro Segment, Wiederholung mit Badge "n×" */
+  .bars-segmente { display: flex; flex-direction: column; gap: 0.35rem; }
+  .bars.wdh { position: relative; margin-top: 0.55rem; }
+  .wdh-badge {
+    position: absolute; top: -0.7rem; right: 0.5rem;
+    font-family: var(--font-chart); font-weight: 700; font-size: 0.85rem; line-height: 1.25;
+    padding: 0 0.5rem; border-radius: 2px;
+    background: var(--sec, var(--barline)); color: #fff;
+  }
+  .ansicht-wahl { display: inline-flex; }
+  .ansicht-wahl button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .ansicht-wahl button:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; }
+
+  .zurueck { margin-bottom: 1rem; }
+
+  /* ---------- UG-Import ---------- */
+  .import-feld {
+    width: 100%; min-height: 18rem; font-family: ui-monospace, Menlo, monospace;
+    font-size: 0.85rem; line-height: 1.45; padding: 0.8rem;
+    border: 1px solid var(--line); border-radius: 3px; background: var(--card);
+    margin: 0.8rem 0; resize: vertical; white-space: pre;
+  }
+  .badge-warn {
+    display: inline-block; font-family: var(--font-chart); font-size: 0.78rem;
+    font-weight: 600; color: #7a4f10; background: #f6e7c6;
+    border: 1px solid #d9b96a; border-radius: 2px; padding: 0.15em 0.55em;
+  }
+  .import-hinweis { color: var(--muted); font-size: 0.92rem; }
+  .ireal-fund { display: flex; gap: 0.5rem; align-items: center; padding: 0.25rem 0; border-bottom: 1px solid var(--line); }
+  .ireal-fund span:first-of-type { flex: 1; }
+  .import-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+    align-items: start; margin-top: 0.8rem;
+  }
+  @media (max-width: 900px) { .import-grid { grid-template-columns: 1fr; } }
+  .import-grid .import-feld { margin: 0; min-height: 24rem; }
+  .import-vorschau {
+    max-height: 32rem; overflow: auto;
+    border: 1px dashed var(--line); border-radius: 3px;
+    padding: 0.8rem; background: var(--paper);
+  }
+  .import-vorschau .v-titel { font-family: var(--font-chart); font-weight: 700; font-size: 1.15rem; }
+  .import-vorschau .v-meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 0.8rem; }
+  .import-vorschau .bar { min-height: 1.9rem; }
+  .import-vorschau .bar .ch { font-size: 1.05rem; }
+  .import-vorschau .grid-sec { margin-bottom: 1rem; }
+  .import-vorschau .v-leer { color: var(--muted); font-style: italic; }
+  .import-opts { display: flex; align-items: center; gap: 0.4rem; margin: 0.6rem 0; font-size: 0.92rem; }
+
+  /* ---------- Einstellungen ---------- */
+  .einst-gruppe {
+    background: var(--card); border: 1px solid var(--line); border-radius: 3px;
+    padding: 1rem 1.2rem; margin-bottom: 1rem; max-width: 36rem;
+  }
+  .einst-gruppe h3 {
+    font-family: var(--font-chart); font-size: 0.72rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted);
+    margin-bottom: 0.6rem;
+  }
+  .einst-gruppe label.radio {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0;
+    cursor: pointer;
+  }
+  .einst-gruppe .hinweis { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
+  .einst-zoom { display: inline-flex; align-items: center; gap: 0.6rem; }
+  .einst-zoom .wert { font-family: var(--font-chart); font-weight: 700; min-width: 3.5rem; text-align: center; }
+  .ug-suche {
+    flex: 1; font: inherit; font-size: 0.95rem; padding: 0.35rem 0.6rem;
+    border: 1px solid var(--line); border-radius: 3px; background: var(--card);
+  }
+  .ug-quelle {
+    font-family: ui-monospace, Menlo, monospace; font-size: 0.8rem; line-height: 1.4;
+    background: var(--card); border: 1px dashed var(--line); border-radius: 3px;
+    padding: 0.8rem; margin-bottom: 1.2rem; max-height: 18rem; overflow: auto;
+  }
+
+  /* ---------- Bühnenmodus: dunkel, groß, blendfrei ---------- */
+  body.stage-mode { background: #12100c; color: #f0ebdd; }
+  body.stage-mode header.chrome, body.stage-mode #export-reminder { display: none; }
+  body.stage-mode main { max-width: none; padding: 0.5rem 1.2rem 40vh; }
+  .stage-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.4rem 0.8rem;
+    background: rgba(18, 16, 12, 0.92);
+    border-bottom: 1px solid #3a352c;
+  }
+  .stage-bar .titel-klein {
+    font-family: var(--font-chart); font-weight: 700; font-size: 1rem; color: #f0ebdd;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .stage-bar .spacer { flex: 1; }
+  .stage-bar button {
+    background: transparent; color: #f0ebdd; border-color: #4a443a;
+  }
+  .stage-bar button:hover { border-color: var(--accent); color: #fff; }
+  .stage-inhalt { padding-top: 3.2rem; zoom: var(--stage-zoom, 1.25); }
+  body.stage-mode .sheet-head { border-color: #f0ebdd; }
+  body.stage-mode .sheet-head .titel { color: #fff; }
+  body.stage-mode .sheet-head .kuenstler, body.stage-mode .sheet-head .meta .label,
+  body.stage-mode .sheet-notizen, body.stage-mode .grid-sec .taktart { color: #9a917f; }
+  body.stage-mode .bars { background: #1c1913; border-width: 2px; }
+  body.stage-mode .bar:not(:nth-child(4n+1)) { border-left-color: #57503f; }
+  body.stage-mode .bar:nth-child(n+5) { border-top-color: #57503f; }
+  body.stage-mode .bar .ch { color: #ffffff; }
+  body.stage-mode .bar .rep, body.stage-mode .bar .nc { color: #9a917f; }
+  body.stage-mode .wdh-badge { font-size: 1.1rem; }
+  body.stage-mode .lyr-sec .zeilen { color: #e6dfcf; }
+  .tap-zone {
+    position: fixed; top: 3.2rem; bottom: 0; width: 34%; z-index: 5;
+    cursor: pointer; -webkit-tap-highlight-color: transparent;
+  }
+  .tap-zone.links { left: 0; }
+  .tap-zone.rechts { right: 0; }
+  /* Bühnen-Ansichten: nur Text / nur Raster → einspaltig, Trennlinie weg */
+  .stage-inhalt .sheet-body.einspaltig { grid-template-columns: 1fr; }
+  .stage-inhalt .sheet-body.einspaltig .split-divider { display: none; }
+  .stage-inhalt .sheet-body.einspaltig .lyrics-col { max-width: 44rem; margin: 0 auto; }
+
+  /* ---------- Transposition ---------- */
+  .transpose-ctl { display: inline-flex; align-items: center; gap: 0.35rem; margin-left: 0.6rem; }
+  .transpose-ctl .t-key {
+    font-family: var(--font-chart); font-weight: 700; font-size: 1.05rem;
+    min-width: 2.6rem; text-align: center;
+  }
+  .transpose-ctl select {
+    font-family: var(--font-chart); font-size: 0.85rem; padding: 0.2rem 0.3rem;
+    border: 1px solid var(--line); border-radius: 2px; background: var(--card);
+  }
+  .t-orig { color: var(--muted); font-size: 0.85rem; font-style: italic; }
+
+  /* ---------- Editor ---------- */
+  .song-toolbar { display: flex; gap: 0.5rem; margin-bottom: 1rem; align-items: center; flex-wrap: wrap; }
+  .song-toolbar .primaer { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .song-toolbar .primaer:hover { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .song-toolbar.drop-aktiv { outline: 2px dashed var(--accent); outline-offset: 4px; border-radius: 4px; }
+  .pdf-status { font-family: var(--font-chart); font-size: 0.8rem; color: var(--muted); }
+
+  .head-edit { display: grid; grid-template-columns: repeat(6, auto); gap: 0.6rem; margin-bottom: 1.2rem; align-items: end; }
+  .head-edit label { font-family: var(--font-chart); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: block; }
+  .head-edit input {
+    font: inherit; padding: 0.3rem 0.5rem; border: 1px solid var(--line);
+    border-radius: 3px; background: var(--card); width: 100%;
+  }
+  .head-edit .feld-titel { grid-column: span 2; }
+  .head-edit .feld-notizen { grid-column: span 6; }
+  @media (max-width: 760px) { .head-edit { grid-template-columns: repeat(2, 1fr); } .head-edit .feld-titel, .head-edit .feld-notizen { grid-column: span 2; } }
+
+  .bar.editierbar { cursor: pointer; }
+  .bar.editierbar:hover { background: #efe9da; }
+  .bar.aktiv { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .bar input {
+    width: 100%; border: none; background: transparent;
+    font-family: var(--font-chart); font-weight: 700; font-size: 1.35rem;
+    outline: none; padding: 0;
+  }
+  .bar input.fehler { color: var(--accent); text-decoration: underline wavy var(--accent); }
+
+  .takt-ops, .suffix-chips { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.35rem; }
+  .takt-ops button, .suffix-chips button, .sec-ops button {
+    font-size: 0.78rem; padding: 0.15rem 0.5rem; border-radius: 2px;
+  }
+  .suffix-chips button { font-family: var(--font-chart); font-weight: 700; }
+  .sec-ops { display: inline-flex; gap: 0.3rem; margin-left: 0.5rem; }
+  .sec-rename, .sec-taktart {
+    font-family: var(--font-chart); font-weight: 700; font-size: 0.85rem;
+    padding: 0.1rem 0.4rem; border: 1px solid var(--line); border-radius: 2px; background: var(--card);
+  }
+  .sec-rename { width: 9rem; }
+  .sec-taktart { width: 3.2rem; }
+
+  .lyr-edit textarea {
+    width: 100%; min-height: 5.5rem; font: inherit; font-size: 1rem; line-height: 1.5;
+    padding: 0.5rem; border: 1px solid var(--line); border-radius: 3px; background: var(--card);
+    margin-top: 0.35rem; resize: vertical;
+  }
+  .lyr-edit select {
+    font-family: var(--font-chart); font-size: 0.85rem; padding: 0.15rem 0.3rem;
+    border: 1px solid var(--line); border-radius: 2px; background: var(--card);
+  }
+  .block-hinzu { margin-top: 0.2rem; }
+
+  /* ---------- Setlisten ---------- */
+  .tab-schalter { display: inline-flex; border: 1px solid var(--barline); border-radius: 3px; overflow: hidden; }
+  .tab-schalter button { border: none; border-radius: 0; }
+  .tab-schalter button.aktiv { background: var(--ink); color: var(--paper); }
+  .sl-kopf { display: flex; gap: 0.8rem; align-items: baseline; margin: 0.4rem 0 1rem; flex-wrap: wrap; }
+  .sl-kopf input[type="text"] {
+    font-family: var(--font-chart); font-weight: 700; font-size: 1.4rem;
+    border: 1px solid transparent; border-radius: 3px; background: transparent;
+    padding: 0.1rem 0.3rem; min-width: 14rem;
+  }
+  .sl-kopf input:hover, .sl-kopf input:focus { border-color: var(--line); background: var(--card); }
+  .sl-kopf input[type="date"] {
+    font: inherit; border: 1px solid var(--line); border-radius: 3px;
+    background: var(--card); padding: 0.2rem 0.4rem;
+  }
+  .sl-eintrag {
+    display: flex; align-items: center; gap: 0.7rem;
+    padding: 0.5rem 0.8rem; margin-bottom: 0.4rem;
+    background: var(--card); border: 1px solid var(--line); border-radius: 3px;
+  }
+  .sl-eintrag.drag-ueber { border-top: 3px solid var(--accent); }
+  .sl-eintrag .griff { cursor: grab; color: var(--muted); font-size: 1.1rem; }
+  .sl-eintrag .nr { font-family: var(--font-chart); font-weight: 700; color: var(--muted); min-width: 1.4rem; text-align: right; }
+  .sl-eintrag .titel-link {
+    font-family: var(--font-chart); font-weight: 700; font-size: 1.05rem;
+    background: none; border: none; padding: 0; cursor: pointer; color: var(--ink); text-align: left;
+  }
+  .sl-eintrag .titel-link:hover { color: var(--accent); }
+  .sl-eintrag .kuenstler { color: var(--muted); font-size: 0.9rem; }
+  .sl-eintrag .spacer { flex: 1; }
+  .sl-eintrag .override-hinweis { font-size: 0.78rem; color: var(--muted); font-style: italic; }
+  .sl-hinzu { display: flex; gap: 0.5rem; margin-top: 0.8rem; align-items: center; }
+  .sl-hinzu select { font: inherit; padding: 0.3rem 0.5rem; border: 1px solid var(--line); border-radius: 3px; background: var(--card); flex: 1; max-width: 24rem; }
+  .ireal-export { margin: 0.8rem 0; padding: 0.6rem 0.8rem; border: 1px solid var(--line); border-radius: 3px; background: var(--card); }
+  .sl-leer { color: var(--muted); font-style: italic; padding: 1.2rem 0; }
+
+  /* Setlisten-Komplettdruck: Deckblatt + ein Song pro Seite */
+  .print-deckblatt h2 { font-family: var(--font-chart); font-size: 1.8rem; margin-bottom: 0.2rem; }
+  .print-deckblatt .datum { color: var(--muted); margin-bottom: 1rem; }
+  .print-deckblatt table { border-collapse: collapse; width: 100%; max-width: 34rem; }
+  .print-deckblatt th, .print-deckblatt td {
+    text-align: left; padding: 0.35rem 0.8rem 0.35rem 0;
+    border-bottom: 1px solid var(--line); font-size: 0.98rem;
+  }
+  .print-deckblatt th { font-family: var(--font-chart); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .print-deckblatt td.nr, .print-deckblatt td.tonart { font-family: var(--font-chart); font-weight: 700; }
+  .print-song { margin-top: 2.5rem; }
+  @media print {
+    .print-deckblatt { break-after: page; }
+    .print-song { break-before: page; margin-top: 0; }
+  }
+
+  /* ---------- A4-Druck: ein Song pro Seite, Schwarzweiß-tauglich ---------- */
+  @page { size: A4 portrait; margin: 11mm 12mm; }
+  @media print {
+    header.chrome, .song-toolbar, #export-reminder, .zurueck,
+    .takt-ops, .suffix-chips, .import-hinweis, .import-feld { display: none !important; }
+    body { background: #fff; }
+    main { padding: 0; max-width: none; margin: 0; }
+    .sheet-head { border-color: #000; }
+    .sheet-body {
+      /* Zweispaltig auch im Druck — die Mobile-Regel (max-width) gilt hier nicht.
+         Die pro Song eingestellte Spaltenteilung (--split) gilt auch auf Papier. */
+      grid-template-columns: minmax(0, calc(var(--split, 55) * 1%)) 0 minmax(0, 1fr) !important;
+      gap: 0 6mm;
+      zoom: var(--pscale, 1);
+    }
+    .split-divider { display: none; }
+    .lyr-sec, .grid-sec { break-inside: avoid; }
+    /* Farbcodes → Rahmenstile: Strophe durchgezogen, Refrain doppelt, Bridge gestrichelt */
+    .sec-mark {
+      color: #000 !important; background: #fff !important;
+      border: 1pt solid #000;
+    }
+    .bars { border-color: #000; background: #fff; }
+    [data-sectype="refrain"] .bars { border-style: double; border-width: 3pt; }
+    [data-sectype="refrain"] .sec-mark { border-style: double; border-width: 2pt; }
+    [data-sectype="bridge"] .bars, [data-sectype="bridge"] .sec-mark { border-style: dashed; }
+    [data-sectype="intro"] .bars, [data-sectype="intro"] .sec-mark,
+    [data-sectype="solo"] .bars, [data-sectype="solo"] .sec-mark,
+    [data-sectype="zwischenspiel"] .bars, [data-sectype="zwischenspiel"] .sec-mark { border-style: dotted; }
+    .bar { min-height: 2.2rem; }
+    .bar:not(:nth-child(4n+1)) { border-left-color: #000; }
+    .bar:nth-child(n+5) { border-top-color: #000; }
+    /* Badge ohne Farbe lesbar: weiß mit schwarzem Rand */
+    .wdh-badge { background: #fff; color: #000; border: 1pt solid #000; }
+  }
+</style>
+</head>
+<body>
+
+<header class="chrome">
+  <h1>stotco <span class="accent">sheets</span></h1>
+  <span class="spacer"></span>
+  <button id="btn-einstellungen" title="Darstellung global einstellen">⚙ Einstellungen</button>
+  <button id="btn-export">Export</button>
+  <button id="btn-import">Import</button>
+  <input type="file" id="file-import" accept=".json" hidden>
+</header>
+
+<main>
+  <div id="export-reminder"></div>
+  <div id="view"></div>
+</main>
+
+<!-- ============================================================
+     CORE: reine Logik ohne DOM. Wird vom Node-Test-Harness
+     (test/harness.mjs) extrahiert und headless getestet.
+     ============================================================ -->
+<script id="core">
+window.SheetsCore = (function () {
+  'use strict';
+
+  // Akkordsymbol: Root (A-G + optional #/b) + Suffix + optionaler Slash-Bass
+  const CHORD_RE = /^([A-G][#b]?)([^/]*)(?:\/([A-G][#b]?))?$/;
+  const SUFFIX_RE = /^(m|maj|min|dim|aug|sus|add|ø|°|[0-9])*[0-9]*$/;
+  const SPECIALS = ['%', 'N.C.'];
+
+  function parseChord(symbol) {
+    if (typeof symbol !== 'string' || symbol.trim() === '') return null;
+    const s = symbol.trim();
+    if (SPECIALS.includes(s)) return { special: s };
+    const m = s.match(CHORD_RE);
+    if (!m) return null;
+    const suffix = m[2] || '';
+    // Suffix muss wie ein Akkordzusatz aussehen, sonst ist es kein Akkord ("Hello")
+    // Alterationen (b9, #11, …) und "alt" für Jazz-Charts (iReal-Import)
+    if (suffix && !/^(m|maj|min|dim|aug|sus[24]?|add[0-9]+|alt|ø|°|\+|-|[b#](?:5|6|9|11|13)|[0-9])+$/.test(suffix)) return null;
+    return { root: m[1], suffix, bass: m[3] || null };
+  }
+
+  const NOTES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const NOTES_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+  // Enharmonische Sonderfälle außerhalb beider Tabellen
+  const NOTE_ALIAS = { Cb: 11, Fb: 4, 'E#': 5, 'B#': 0 };
+
+  function noteIndex(name) {
+    let i = NOTES_SHARP.indexOf(name);
+    if (i === -1) i = NOTES_FLAT.indexOf(name);
+    if (i === -1 && name in NOTE_ALIAS) i = NOTE_ALIAS[name];
+    return i;
+  }
+
+  function transposeNote(name, semitones, useFlats) {
+    const i = noteIndex(name);
+    if (i === -1) return name;
+    const j = ((i + semitones) % 12 + 12) % 12;
+    return (useFlats ? NOTES_FLAT : NOTES_SHARP)[j];
+  }
+
+  function transposeChord(symbol, semitones, opts) {
+    const useFlats = !!(opts && opts.useFlats);
+    const parsed = parseChord(symbol);
+    if (!parsed) return symbol;
+    if (parsed.special) return symbol;
+    if (semitones === 0) return symbol;
+    let out = transposeNote(parsed.root, semitones, useFlats) + parsed.suffix;
+    if (parsed.bass) out += '/' + transposeNote(parsed.bass, semitones, useFlats);
+    return out;
+  }
+
+  // Dur-Tonarten, die nach Quintenzirkel mit Bs notiert werden.
+  // Gb (6 Vorzeichen) zählt zu den Bs, das enharmonische F# zu den Kreuzen —
+  // wer die Tonart als Gb eingibt, will Bs sehen, und umgekehrt.
+  const FLAT_MAJOR_KEYS = ['F', 'Bb', 'Eb', 'Ab', 'Db', 'Gb', 'Cb'];
+
+  function keyPrefersFlats(key) {
+    if (typeof key !== 'string' || key === '') return false;
+    let root = key.replace(/m(in)?$/, '');
+    const isMinor = root !== key;
+    if (isMinor) {
+      // Parallele Durtonart: kleine Terz über der Moll-Wurzel.
+      // Beide Schreibweisen prüfen, weil die Liste Flat-Namen führt
+      // (Gm → Parallele Bb, als Kreuz-Name wäre das A#).
+      return FLAT_MAJOR_KEYS.includes(transposeNote(root, 3, true)) ||
+             FLAT_MAJOR_KEYS.includes(transposeNote(root, 3, false));
+    }
+    return FLAT_MAJOR_KEYS.includes(root);
+  }
+
+  // Pitch-Klassen, deren Dur-Tonart mit Bs notiert wird (F, Bb, Eb, Ab, Db).
+  // 6 (F#/Gb) fehlt bewusst: Tie-Break zugunsten der Kreuz-Schreibweise.
+  const FLAT_TARGET_PITCHES = [5, 10, 3, 8, 1];
+
+  function transposeKey(key, semitones) {
+    if (typeof key !== 'string' || key === '') return key;
+    const root = key.replace(/m(in)?$/, '');
+    const isMinor = root !== key;
+    let i = noteIndex(root);
+    if (i === -1) return key;
+    if (isMinor) i = (i + 3) % 12; // über die parallele Dur entscheiden
+    const j = ((i + semitones) % 12 + 12) % 12;
+    const useFlats = FLAT_TARGET_PITCHES.includes(j);
+    const newRoot = transposeNote(root, semitones, useFlats);
+    return isMinor ? newRoot + 'm' : newRoot;
+  }
+
+  function displayNote(name, notation) {
+    if (notation !== 'deutsch') return name;
+    if (name === 'B') return 'H';
+    if (name === 'Bb') return 'B';
+    return name;
+  }
+
+  function displayChord(symbol, notation) {
+    const parsed = parseChord(symbol);
+    if (!parsed || parsed.special) return symbol;
+    let out = displayNote(parsed.root, notation) + parsed.suffix;
+    if (parsed.bass) out += '/' + displayNote(parsed.bass, notation);
+    return out;
+  }
+
+  // Umkehrung der Anzeigeschicht: getippte deutsche Notation → intern international.
+  // H → B, B → Bb; ein bereits international getipptes Bb bleibt Bb.
+  function normalizeInputNote(name) {
+    if (name === 'H') return 'B';
+    if (name === 'B') return 'Bb';
+    return name;
+  }
+
+  function normalizeInputChord(symbol, notation) {
+    if (notation !== 'deutsch' || typeof symbol !== 'string') return symbol;
+    const s = symbol.trim();
+    if (SPECIALS.includes(s)) return s;
+    // H wie ein Root behandeln (parseChord kennt nur A-G)
+    const m = s.match(/^([A-H][#b]?)([^/]*)(?:\/([A-H][#b]?))?$/);
+    if (!m) return symbol;
+    let out = normalizeInputNote(m[1]) + (m[2] || '');
+    if (m[3]) out += '/' + normalizeInputNote(m[3]);
+    return parseChord(out) ? out : symbol;
+  }
+
+  // ---------- UG-Import-Parser (portiert aus strassenmusik-buddy paste-parser.ts) ----------
+
+  const UG_CHORD_RE = /^[A-G][#b]?(m(?:aj)?|min|dim|aug|sus[24]?|add[0-9]*|[0-9])*(\/[A-G][#b]?)?$/;
+  const UG_SECTION_RE = /^\[?(intro|verse|chorus|bridge|outro|pre-chorus|interlude|solo|refrain|strophe|tab)\s*(\d*)\]?\s*$/i;
+  const UG_SECTION_MAP = {
+    intro: 'Intro', verse: 'Strophe', chorus: 'Refrain', bridge: 'Bridge',
+    outro: 'Outro', 'pre-chorus': 'Vorrefrain', interlude: 'Zwischenspiel',
+    solo: 'Solo', refrain: 'Refrain', strophe: 'Strophe', tab: 'Tab',
+  };
+  const UG_NOISE = [
+    /^tuning:/i, /^capo/i, /^key:/i, /^tempo:/i, /^time signature/i,
+    /^[\d,.]+ contributors?$/i, /^difficulty:/i, /^views:?\s*\d/i, /^last edit/i,
+    /^chords$/i, /^tabs$/i, /^official$/i, /^ver \d+$/i, /^guitar\s*(pro)?$/i,
+    /^ukulele$/i, /^bass$/i, /^drum$/i, /^piano$/i, /^power$/i,
+    /^strumming$/i, /^there is no strumming/i, /^create account/i, /^sign up/i,
+    /^ultimate-guitar/i, /^www\.ultimate/i, /^tabs\.ultimate/i,
+    /^favorites$/i, /^print$/i, /^edit$/i, /^report$/i, /^autoscroll$/i,
+    // Transponier-Tabellen mancher Tab-Autoren: "E7 = G7"
+    /^[A-G][#b]?\S*\s*=\s*[A-G][#b]?/,
+    // Gitarren-Tab-Notationszeilen: "e|---3---", "G|-0-2---"
+    /^[a-gA-G][#b]?\|[-–0-9]/,
+    // Taktmarkierungszeilen mancher Tabber: "  I     I     I  "
+    /^[I|\s]+$/,
+    // Deko-Trenner und Legenden: "*****", "= Middle 8"
+    /^\*{3,}/,
+    /^=/,
+  ];
+
+  function ugIsNoise(line) {
+    const t = line.trim();
+    if (t === '') return false;
+    if (UG_NOISE.some(p => p.test(t))) return true;
+    // Zeilen, die mit | beginnen, aber keine Akkorde enthalten, sind
+    // Legenden ("| / slide up") — Pipe-Taktzeilen haben Akkorde und
+    // bleiben unberührt.
+    if (t.startsWith('|')) {
+      const tokens = ugChordTokens(t);
+      return !tokens.some(tok => UG_CHORD_RE.test(tok.clean) || tok.clean === 'N.C.');
+    }
+    return false;
+  }
+
+  // Wiederholungsangaben: "x2", "2x", "(x4)", "[2x]" — entweder hinter einer
+  // Akkordzeile (…ENDE) oder als eigene Zeile direkt danach (…ALLEIN).
+  // Nur 2…16 zählt; "x24432" (Griffbild) und "x1" bleiben unberührt.
+  const UG_MULT_ALLEIN = /^[([]?\s*(?:x\s*(\d+)|(\d+)\s*x)\s*[)\]]?$/i;
+  const UG_MULT_ENDE = /\s+[([]?\s*(?:x\s*(\d+)|(\d+)\s*x)\s*[)\]]?\s*\*?$/i;
+  function ugMultiplikator(m) {
+    const n = m ? parseInt(m[1] || m[2], 10) : 1;
+    return n >= 2 && n <= 16 ? n : 1;
+  }
+
+  function ugChordTokens(line) {
+    // Tokens mit Spaltenposition, Deko-Zeichen entfernt
+    const tokens = [];
+    const re = /\S+/g;
+    let m;
+    while ((m = re.exec(line)) !== null) {
+      tokens.push({ raw: m[0], clean: m[0].replace(/[()[\]|:,*]/g, ''), pos: m.index });
+    }
+    return tokens;
+  }
+
+  function ugIsChordLine(line) {
+    const t = line.trim();
+    if (!t || UG_SECTION_RE.test(t)) return false;
+    // Pipe- und Deko-Tokens (clean leer) zählen nicht mit — sonst drücken
+    // Taktstrich-Zeilen wie "| C | F |" die Akkord-Quote unter 50 %.
+    const tokens = ugChordTokens(t).filter(tok => tok.clean !== '');
+    if (tokens.length === 0) return false;
+    const chordCount = tokens.filter(tok => UG_CHORD_RE.test(tok.clean) || tok.clean === 'N.C.').length;
+    return chordCount / tokens.length >= 0.5;
+  }
+
+  // Abschnittsmarker erkennen — bekannte Typen (UG_SECTION_RE) werden auf
+  // deutsche Namen gemappt, jede sonstige [Klammer]-Zeile wird generisch als
+  // Abschnitt übernommen (Post-Chorus, Instrumental, Keyboard Solo, …).
+  // Keine Marker: Wiederholungsangaben ([2x]), Akkorde ([C]), lange Zeilen.
+  function ugMarker(line) {
+    const t = line.trim();
+    const secM = t.match(UG_SECTION_RE);
+    if (secM && t !== '') {
+      const base = UG_SECTION_MAP[secM[1].toLowerCase()] || secM[1];
+      return { label: secM[2] ? base + ' ' + secM[2] : base };
+    }
+    // Klammer-Zusatz hinter dem Marker erlaubt: "[Verse 1] (clean guitar)"
+    const klammer = t.match(/^\[([^\]]+)\]\s*(?:\(.*\))?$/);
+    if (!klammer) return null;
+    const inhalt = klammer[1].trim();
+    if (inhalt.length === 0 || inhalt.length > 30) return null;
+    if (/^(\d+\s*x|x\s*\d+|\d+)$/i.test(inhalt)) return null;
+    if (UG_CHORD_RE.test(inhalt)) return null;
+    const numM = inhalt.match(/^(\d+)\.\s*(strophe|verse)$/i);
+    if (numM) return { label: 'Strophe ' + numM[1] };
+    // Bekannte Typen auch im generischen Pfad deutsch mappen —
+    // "[Verse 1] (clean guitar)" landet hier, nicht in UG_SECTION_RE
+    const teile = inhalt.match(/^(.*?)\s*(\d*)$/);
+    const bekannt = UG_SECTION_MAP[teile[1].toLowerCase()];
+    if (bekannt) return { label: teile[2] ? bekannt + ' ' + teile[2] : bekannt };
+    return { label: inhalt };
+  }
+
+  // Takt-Heuristik. Mit zeilenTakte > 0 (Default 4) gilt: eine Textzeile
+  // entspricht so vielen Takten — Akkorde werden sequenziell gesetzt, der
+  // Rest mit % (gehalten) aufgefüllt. Das trifft den häufigen Fall, dass
+  // der letzte Akkord einer Zeile weiterklingt (UG notiert das nicht).
+  // Instrumental-Zeilen (ohne Text) und Zeilen mit ≥ zeilenTakte Akkorden
+  // bleiben eins-zu-eins. Mit zeilenTakte = 0: ein Akkord pro Takt, plus
+  // Spezialfall „zwei enge Akkorde über einer Phrase" → ein geteilter Takt.
+  function ugLineToBars(chordLine, lyricLine, zeilenTakte) {
+    // Pipe-Notation "| C | F G |" nennt Taktgrenzen explizit — direkt
+    // übernehmen, keine Heuristik und keine %-Auffüllung.
+    if (chordLine.includes('|')) {
+      const segmente = chordLine.split('|').slice(1, -1);
+      const bars = [];
+      for (const seg of segmente) {
+        const segChords = ugChordTokens(seg).filter(t => UG_CHORD_RE.test(t.clean) || t.clean === 'N.C.');
+        bars.push(segChords.length ? segChords.map(c => c.clean) : ['%']);
+      }
+      if (bars.length) return bars;
+    }
+    const chords = ugChordTokens(chordLine).filter(t => UG_CHORD_RE.test(t.clean) || t.clean === 'N.C.');
+    if (chords.length === 0) return [];
+    const hatText = !!(lyricLine && lyricLine.trim());
+
+    if (zeilenTakte > 0) {
+      if (!hatText || chords.length >= zeilenTakte) return chords.map(c => [c.clean]);
+      const bars = chords.map(c => [c.clean]);
+      while (bars.length < zeilenTakte) bars.push(['%']);
+      return bars;
+    }
+
+    if (chords.length === 2 && hatText) {
+      const len = lyricLine.length;
+      const rel1 = chords[0].pos / len;
+      const rel2 = chords[1].pos / len;
+      if (rel1 < 0.25 && rel2 >= 0.35 && rel2 <= 0.65) {
+        return [[chords[0].clean, chords[1].clean]];
+      }
+    }
+    return chords.map(c => [c.clean]);
+  }
+
+  function parseUGText(raw, opts) {
+    const zeilenTakte = opts && 'zeilenTakte' in opts ? opts.zeilenTakte : 4;
+    const warnungen = [];
+    const lines = String(raw || '').replace(/\r\n/g, '\n').split('\n')
+      .map(l => l.replace(/\[ch\](.*?)\[\/ch\]/g, '$1').replace(/\[\/?tab\]/g, ''));
+
+    // Phase 1: Header (Titel, Künstler, Key, Capo) bis zur ersten Section/Akkordzeile
+    let titel = '', kuenstler = '', key = null, capo = 0, contentStart = 0;
+    const headerLines = [];
+    for (let i = 0; i < Math.min(lines.length, 25); i++) {
+      const t = lines[i].trim();
+      if (!t) continue;
+      const capoM = t.match(/capo[:\s]*(\d+)/i);
+      if (capoM) { capo = parseInt(capoM[1], 10); continue; }
+      const keyM = t.match(/^key[:\s]*([A-G][#b]?m?)\s*$/i);
+      if (keyM) { key = keyM[1]; continue; }
+      if (ugMarker(t) !== null || ugIsChordLine(t)) { contentStart = i; break; }
+      if (ugIsNoise(t)) continue;
+      headerLines.push(t);
+      contentStart = i + 1;
+    }
+    if (headerLines.length >= 1) {
+      titel = headerLines[0].replace(/\s+(chords?|tabs?|guitar|ukulele|bass)$/i, '').trim();
+    }
+    if (headerLines.length >= 2) kuenstler = headerLines[1];
+    else if (titel) warnungen.push('Künstler nicht automatisch erkannt');
+
+    // Phase 2: Abschnitts-Instanzen sammeln (Label, Takte, Textzeilen)
+    const instanzen = [];
+    let aktuelle = null;
+    let pendingChordLine = null;
+    let pendingMult = 1;
+    // Takte der zuletzt abgeschlossenen Zeile: ein "[2x]" direkt danach
+    // schreibt sie aus (von/bis in aktuelle.takte)
+    let letzteZeile = null;
+
+    const zeileEinfuegen = (chordLine, lyricLine) => {
+      const bars = ugLineToBars(chordLine, lyricLine, zeilenTakte);
+      const von = aktuelle.takte.length;
+      for (let k = 0; k < pendingMult; k++) aktuelle.takte.push(...bars.map(b => b.slice()));
+      letzteZeile = bars.length ? { von, bis: aktuelle.takte.length } : null;
+      pendingMult = 1;
+    };
+    const flushPending = () => {
+      if (pendingChordLine !== null && aktuelle) {
+        zeileEinfuegen(pendingChordLine, null);
+        pendingChordLine = null;
+      }
+    };
+    const startInstanz = (label) => {
+      flushPending();
+      aktuelle = { label, takte: [], zeilen: [] };
+      instanzen.push(aktuelle);
+      letzteZeile = null;
+    };
+
+    for (let i = contentStart; i < lines.length; i++) {
+      const line = lines[i];
+      const t = line.trim();
+      if (ugIsNoise(t)) continue;
+      // Eigene Wiederholungszeile ("[2x]", "x4") direkt nach einer Akkordzeile
+      const multM = t !== '' ? t.match(UG_MULT_ALLEIN) : null;
+      const mult = ugMultiplikator(multM);
+      if (multM && mult > 1 && aktuelle) {
+        if (pendingChordLine !== null) { pendingMult = mult; continue; }
+        if (letzteZeile) {
+          const teil = aktuelle.takte.slice(letzteZeile.von, letzteZeile.bis);
+          for (let k = 1; k < mult; k++) aktuelle.takte.push(...teil.map(b => b.slice()));
+          letzteZeile = null;
+          continue;
+        }
+      }
+      const mk = t !== '' ? ugMarker(t) : null;
+      if (mk) {
+        startInstanz(mk.label);
+        continue;
+      }
+      if (!t) { flushPending(); letzteZeile = null; continue; }
+      if (!aktuelle) startInstanz('Song');
+      if (ugIsChordLine(t)) {
+        flushPending();
+        const endM = line.match(UG_MULT_ENDE);
+        const endN = ugMultiplikator(endM);
+        pendingChordLine = endN > 1 ? line.replace(UG_MULT_ENDE, '') : line;
+        pendingMult = endN;
+      } else {
+        if (pendingChordLine !== null) {
+          zeileEinfuegen(pendingChordLine, line);
+          pendingChordLine = null;
+        } else {
+          letzteZeile = null;
+        }
+        aktuelle.zeilen.push(t);
+      }
+    }
+    flushPending();
+
+    // Akkord-Übersichten am Tab-Anfang aussortieren: eine automatisch
+    // erzeugte "Song"-Instanz ohne jede Textzeile ist keine Musik, sondern
+    // die Akkord-Liste des Autors — sofern danach echte Abschnitte folgen.
+    // Ebenso verworfen: leere Instanzen (keine Takte, kein Text) — typisch
+    // Marker, deren Inhalt reine Tab-Notation war ([Intro Tab]). Zeilen,
+    // die nur Klammer-Spielanweisungen sind ("(Bass)", "(x10)"), zählen
+    // dabei nicht als Text.
+    const nurAnweisungen = (zeilen) => zeilen.every(z => /^\(.*\)$/.test(z.trim()));
+    const gefiltert = instanzen.filter((inst, i) =>
+      !(inst.label === 'Song' && inst.zeilen.length === 0 && instanzen.length > 1)
+      && !(inst.takte.length === 0 && nurAnweisungen(inst.zeilen) && instanzen.length > 1));
+    instanzen.length = 0;
+    instanzen.push(...gefiltert);
+
+    // Phase 3: Deduplizierung — gleiche Basis + identische Takte → ein Raster.
+    const { abschnitte, text } = abschnitteAusInstanzen(instanzen);
+
+    // Phase 4: Qualität + Tonart-Fallback
+    let confidence = 'high';
+    const alleTakte = abschnitte.flatMap(a => a.takte);
+    if (alleTakte.length === 0) {
+      warnungen.push('Keine Akkord-Zeilen erkannt');
+      confidence = 'low';
+    }
+    if (!titel) { titel = 'Unbekannter Song'; confidence = 'low'; }
+    if (!key && alleTakte.length > 0 && alleTakte[0].length > 0) {
+      const m = alleTakte[0][0].match(/^([A-G][#b]?m?)/);
+      if (m) key = m[1];
+    }
+
+    return {
+      titel, kuenstler,
+      originalTonart: key || 'C',
+      capo,
+      abschnitte, text,
+      warnungen, confidence,
+    };
+  }
+
+  // Wiederholungen für die Anzeige verdichten (reine Ableitung, `takte` bleibt
+  // ausgeschrieben). Ergebnis: Segmente { takte } (ausgeschrieben) und
+  // { muster, n } (Muster n-mal; `muster` = Takte des ersten Vorkommens).
+  // Einheit = Akkordtakt plus folgende %-Takte; gleich, wenn die Akkorde
+  // gleich sind (Haltelänge zählt nicht), ausgenommen die Musterränder: die
+  // erste Einheit muss gleich lang gehalten sein, die letzte gleich "gehalten
+  // oder nicht". So bleibt die Wiederholung an der Zeilengrenze (Brightside:
+  // "G C % %" ≠ "G C Fmaj7", Phase "C % % %" davor), Hotel-Strophen mit
+  // anderer Auffüllung innen bleiben gleich. Periode 2–8 Einheiten, n ≥ 2, exakt.
+  // Mehrere Kandidaten: größte Abdeckung, dann Ende am Bereichsende (Phase),
+  // dann kleinste Periode, dann frühester Start. Der Rest davor/dahinter wird
+  // auf dieselbe Weise weiter verdichtet.
+  function verdichteTakte(takte) {
+    const einheiten = [];
+    for (const t of takte || []) {
+      const letzte = einheiten[einheiten.length - 1];
+      if (t.length === 1 && t[0] === '%' && letzte) letzte.takte.push(t);
+      else einheiten.push({ key: t.join('+'), takte: [t] });
+    }
+    const gleich = (a, b) => einheiten[a].key === einheiten[b].key;
+    const lang = (i) => einheiten[i].takte.length;
+    const MAX_PERIODE = 8;
+
+    function besterBlock(lo, hi) {
+      let best = null;
+      for (let p = 2; p <= MAX_PERIODE && 2 * p <= hi - lo; p++) {
+        for (let s = lo; s + 2 * p <= hi; s++) {
+          // Muster aus lauter gleichen Einheiten ist Halten, keine Wiederholung
+          let alleGleich = true;
+          for (let j = 1; j < p && alleGleich; j++) alleGleich = gleich(s, s + j);
+          if (alleGleich) continue;
+          let n = 1;
+          while (s + (n + 1) * p <= hi) {
+            const o = s + n * p;
+            let ok = lang(o) === lang(s) && (lang(o + p - 1) > 1) === (lang(s + p - 1) > 1);
+            for (let j = 0; j < p && ok; j++) ok = gleich(s + j, o + j);
+            if (!ok) break;
+            n++;
+          }
+          if (n < 2) continue;
+          const cov = n * p;
+          const endetAmEnde = s + cov === hi;
+          if (!best || cov > best.cov
+            || (cov === best.cov && endetAmEnde && !best.endetAmEnde)
+            || (cov === best.cov && endetAmEnde === best.endetAmEnde && p < best.p)) {
+            best = { s, p, n, cov, endetAmEnde };
+          }
+        }
+      }
+      return best;
+    }
+
+    const flach = (lo, hi) => einheiten.slice(lo, hi).flatMap(e => e.takte);
+    const segmente = [];
+    function bereich(lo, hi) {
+      if (lo >= hi) return;
+      const b = besterBlock(lo, hi);
+      if (!b) {
+        const letztes = segmente[segmente.length - 1];
+        if (letztes && !letztes.muster) letztes.takte.push(...flach(lo, hi));
+        else segmente.push({ takte: flach(lo, hi) });
+        return;
+      }
+      bereich(lo, b.s);
+      segmente.push({ muster: flach(b.s, b.s + b.p), n: b.n });
+      bereich(b.s + b.cov, hi);
+    }
+    bereich(0, einheiten.length);
+    return segmente;
+  }
+
+  // Instanzen (Label, Takte, Textzeilen in Spielreihenfolge) zu Abschnitten
+  // und Textblöcken verdichten: gleiche Basis + identische Takte → ein Raster.
+  // Zwei Pässe: erst Signaturen pro Basis zählen, dann benennen —
+  // eine Basis mit nur einer Akkordfolge heißt schlicht "Strophe",
+  // mit mehreren bleiben die Labels ("Strophe 1", "Strophe 2") erhalten.
+  // Genutzt vom UG- und vom iReal-Import.
+  function abschnitteAusInstanzen(instanzen) {
+    const basisVon = (label) => label.replace(/\s+\d+$/, '');
+    const sigVon = (inst) => basisVon(inst.label) + '::' + (inst.taktart || '') + '::' + JSON.stringify(inst.takte);
+    const sigsProBasis = new Map();
+    for (const inst of instanzen) {
+      const basis = basisVon(inst.label);
+      if (!sigsProBasis.has(basis)) sigsProBasis.set(basis, new Set());
+      sigsProBasis.get(basis).add(sigVon(inst));
+    }
+
+    const abschnitte = [];
+    const text = [];
+    const nameFuer = new Map(); // Signatur → vergebener Abschnittsname
+
+    for (const inst of instanzen) {
+      const basis = basisVon(inst.label);
+      const sig = sigVon(inst);
+      let name = nameFuer.get(sig);
+      if (name === undefined) {
+        name = sigsProBasis.get(basis).size === 1 ? basis : inst.label;
+        if (abschnitte.some(a => a.name === name)) {
+          name = freierAbschnittsname(abschnitte, name);
+        }
+        nameFuer.set(sig, name);
+        const abschnitt = { name, takte: inst.takte };
+        if (inst.taktart) abschnitt.taktart = inst.taktart;
+        abschnitte.push(abschnitt);
+      }
+      text.push({ ref: name, zeilen: inst.zeilen });
+    }
+    return { abschnitte, text };
+  }
+
+  // Freien Abschnittsnamen finden. Vorhandene Nummern-Suffixe werden erst
+  // abgestreift („Song 2 2 1" → Basis „Song"), dann wird hochgezählt —
+  // so entstehen nie verkettete Namen wie „Strophe 2 2".
+  function freierAbschnittsname(abschnitte, wunsch) {
+    const basis = String(wunsch || 'Teil').replace(/(\s+\d+)+$/, '') || 'Teil';
+    let name = basis;
+    for (let n = 2; abschnitte.some(a => a.name === name); n++) name = basis + ' ' + n;
+    return name;
+  }
+
+  // Textblock an einer Zeile teilen und den referenzierten Abschnitt an der
+  // anteiligen Taktgrenze mitteilen. Referenzieren andere Textblöcke dasselbe
+  // Raster, bleibt es unangetastet — der geteilte Block bekommt eigene Kopien.
+  function splitTextBlock(song, blockIdx, zeile) {
+    const block = song.text[blockIdx];
+    if (!block) return false;
+    const zeilen = block.zeilen || [];
+    if (zeile <= 0 || zeile >= zeilen.length) return false;
+    const secIdx = song.abschnitte.findIndex(a => a.name === block.ref);
+    if (secIdx === -1) return false;
+    const sec = song.abschnitte[secIdx];
+    const splitBar = Math.round(zeile * sec.takte.length / zeilen.length);
+
+    const geteilt = song.text.some((b, i) => i !== blockIdx && b.ref === block.ref);
+    let zweiterName;
+    if (geteilt) {
+      const a = { name: freierAbschnittsname(song.abschnitte, block.ref), takte: sec.takte.slice(0, splitBar).map(t => t.slice()) };
+      song.abschnitte.splice(secIdx + 1, 0, a);
+      const b = { name: freierAbschnittsname(song.abschnitte, block.ref), takte: sec.takte.slice(splitBar).map(t => t.slice()) };
+      song.abschnitte.splice(secIdx + 2, 0, b);
+      block.ref = a.name;
+      zweiterName = b.name;
+    } else {
+      const neu = { name: freierAbschnittsname(song.abschnitte, sec.name), takte: sec.takte.slice(splitBar) };
+      if (sec.taktart) neu.taktart = sec.taktart;
+      sec.takte = sec.takte.slice(0, splitBar);
+      song.abschnitte.splice(secIdx + 1, 0, neu);
+      zweiterName = neu.name;
+    }
+
+    song.text.splice(blockIdx + 1, 0, { ref: zweiterName, zeilen: zeilen.slice(zeile) });
+    block.zeilen = zeilen.slice(0, zeile);
+    return true;
+  }
+
+  // ---------- iReal Pro ----------
+  // Format (verifiziert 20.10.2026 an ireal-reader und echten Forums-Playlists):
+  // irealb://<prozent-kodiert>, Songs durch "===" getrennt, bei Playlists als
+  // letztes Feld der Playlist-Name. Ein Song:
+  //   Titel=Komponist==Stil=Tonart==1r34LbKcu7<Musik>=Begleitstil=BPM=Wiederholungen
+  // Die Musik ist in 50-Zeichen-Blöcken verwürfelt.
+
+  const IREAL_MUSIK_PREFIX = '1r34LbKcu7';
+
+  function irealObfusc50(s) {
+    const n = s.split('');
+    for (let i = 0; i < 5; i++) { n[49 - i] = s[i]; n[i] = s[49 - i]; }
+    for (let i = 10; i < 24; i++) { n[49 - i] = s[i]; n[i] = s[49 - i]; }
+    return n.join('');
+  }
+
+  // Selbstinvers: dieselbe Funktion ver- und entwürfelt. Ein Block bleibt
+  // unverwürfelt, wenn danach weniger als 2 Zeichen folgen.
+  function irealVerwuerfeln(s) {
+    let r = '';
+    while (s.length > 50) {
+      const p = s.slice(0, 50);
+      s = s.slice(50);
+      r += s.length < 2 ? p : irealObfusc50(p);
+    }
+    return r + s;
+  }
+
+  function irealLinksFinden(text) {
+    return String(text || '').match(/irealb:\/\/[^"'\s<>]+/g) || [];
+  }
+
+  function irealLinkLesen(link) {
+    let body = String(link).replace(/^irealb:\/\//, '');
+    try { body = decodeURIComponent(body); } catch (e) { return { name: '', songs: [], fehler: 'Link nicht lesbar' }; }
+    const teile = body.split('===');
+    const name = teile.length > 1 ? teile.pop() : '';
+    const songs = [];
+    for (const teil of teile) {
+      const f = teil.split('=');
+      const mi = f.findIndex(x => x.startsWith(IREAL_MUSIK_PREFIX));
+      if (mi < 2) continue;
+      // Tonart = letztes Feld vor der Musik, das wie eine Tonart aussieht;
+      // ältere Links haben weniger Leerfelder, deshalb suchen statt zählen.
+      let ki = -1;
+      for (let i = mi - 1; i >= 1; i--) {
+        if (/^[A-G][#b]?-?$/.test(f[i])) { ki = i; break; }
+      }
+      songs.push({
+        titel: f[0] || 'Unbekannter Song',
+        komponist: f[1] || '',
+        stil: ki > 1 ? (f[ki - 1] || f[ki - 2] || '') : '',
+        tonart: ki > 0 ? f[ki] : 'C',
+        musik: irealVerwuerfeln(f[mi].slice(IREAL_MUSIK_PREFIX.length)),
+        begleitstil: f[mi + 1] || '',
+        bpm: parseInt(f[mi + 2], 10) || null,
+      });
+    }
+    return { name, songs };
+  }
+
+  // iReal-Qualität → stotco-Suffix. "^" allein heißt in iReal maj7.
+  function irealAkkordZuStotco(sym) {
+    const m = String(sym).match(/^([A-G][#b]?)([^/]*)(?:\/([A-G][#b]?))?$/);
+    if (!m) return sym;
+    const q = m[2];
+    let s = q;
+    if (q.startsWith('-^')) s = 'mmaj' + (q.slice(2) || '7');
+    else if (q.startsWith('^')) s = 'maj' + (q.slice(1) || '7');
+    else if (q.startsWith('-')) s = 'm' + q.slice(1);
+    else if (q.startsWith('h')) s = 'm7b5' + q.slice(1).replace(/^7/, '');
+    else if (q.startsWith('o')) s = 'dim' + q.slice(1);
+    return m[1] + s + (m[3] ? '/' + m[3] : '');
+  }
+
+  function stotcoAkkordZuIreal(sym) {
+    const p = parseChord(sym);
+    if (!p) return String(sym);
+    if (p.special === 'N.C.') return 'n';
+    if (p.special === '%') return 'x';
+    let s = p.suffix;
+    // Schreibweisen, die iReal selbst nie benutzt: "sus4" heißt dort "sus",
+    // "sus2" heißt "2", und "^" allein wäre maj7 — "maj" ohne Zahl ist der Dur-Dreiklang.
+    if (s === 'maj') s = '';
+    else if (s === 'sus2') s = '2';
+    else if (s === 'aug7') s = '7#5';
+    s = s.replace(/sus4$/, 'sus').replace(/add2$/, 'add9');
+    if (/^m7b5/.test(s)) s = 'h7' + s.slice(4);
+    else if (/^ø/.test(s)) s = 'h7' + s.replace(/^ø7?/, '');
+    else if (/^mmaj/.test(s)) s = '-^' + s.slice(4);
+    else if (/^maj/.test(s)) s = '^' + s.slice(3);
+    else if (/^min/.test(s)) s = '-' + s.slice(3);
+    else if (/^m/.test(s)) s = '-' + s.slice(1);
+    else if (/^dim/.test(s)) s = 'o' + s.slice(3);
+    else if (/^°/.test(s)) s = 'o' + s.slice(1);
+    else if (/^aug/.test(s)) s = '+' + s.slice(3);
+    return p.root + s + (p.bass ? '/' + p.bass : '');
+  }
+
+  function irealTaktart(code) {
+    if (code === '12') return '12/8';
+    return code.length === 2 ? code[0] + '/' + code[1] : code.slice(0, -1) + '/' + code.slice(-1);
+  }
+
+  function irealTaktCode(taktart) {
+    if (taktart === '12/8') return '12';
+    return String(taktart || '4/4').replace('/', '');
+  }
+
+  const IREAL_ABSCHNITT = { i: 'Intro', V: 'Strophe' };
+  const IREAL_AKKORD_RE = /^[A-GW](?:sus|alt|add|[+\-^\dhob#])*(?:\/[A-G][#b]?)?/;
+
+  // Zerlegt den entwürfelten Musik-String in Takte, so wie sie notiert sind.
+  // Start-Zeichen (Abschnitt, Segno, Volta, {, Taktart) hängen am gerade
+  // geöffneten Takt, End-Zeichen (}, Z, ], Kommentare) am letzten Takt mit
+  // Akkorden. Ein Q in einem Takt mit Akkorden ist das "zur Coda"-Zeichen,
+  // ein Q am Anfang eines leeren Takts der Coda-Beginn.
+  function irealTakteLesen(musik) {
+    const takte = [];
+    let label = 'A';
+    let taktart = '4/4';
+    let letzteWurzel = null;
+    let altWeggelassen = false;
+    const neu = () => ({ label, akkorde: [], taktart, neuerAbschnitt: false, kommentare: [] });
+    let akt = neu();
+    takte.push(akt);
+    const neuerTakt = () => { if (akt.akkorde.length) { akt = neu(); takte.push(akt); } };
+    const gefuellt = () => (akt.akkorde.length || takte.length < 2 ? akt : takte[takte.length - 2]);
+
+    let s = String(musik || '');
+    let m;
+    while (s.length) {
+      if (s.startsWith('XyQ')) { s = s.slice(3); continue; }
+      if ((m = s.match(/^<([^>]*)>/))) {
+        // "*36" am Anfang ist eine Positionsangabe, XyQ ist Füllzeichen
+        const k = m[1].replace(/^\*\d{2}/, '').replace(/XyQ/g, '').trim();
+        if (k) gefuellt().kommentare.push(k);
+        s = s.slice(m[0].length); continue;
+      }
+      if ((m = s.match(/^\*([A-Za-z])/))) {
+        label = IREAL_ABSCHNITT[m[1]] || m[1].toUpperCase();
+        akt.label = label;
+        akt.neuerAbschnitt = true;
+        s = s.slice(2); continue;
+      }
+      if ((m = s.match(/^T(\d{2,3})/))) {
+        taktart = irealTaktart(m[1]);
+        akt.taktart = taktart;
+        s = s.slice(m[0].length); continue;
+      }
+      if (s.startsWith('r|XyQ')) {
+        // Die beiden vorigen Takte wiederholen: aktueller + ein neuer Takt
+        const n = takte.length;
+        const a = takte[n - 3], b = takte[n - 2];
+        if (a && b) {
+          akt.akkorde = a.akkorde.slice();
+          akt = neu();
+          akt.akkorde = b.akkorde.slice();
+          takte.push(akt);
+        }
+        s = s.slice(5); continue;
+      }
+      if (s.startsWith('Kcl')) { neuerTakt(); akt.akkorde = ['%']; s = s.slice(3); continue; }
+      if (s.startsWith('LZ')) { neuerTakt(); s = s.slice(2); continue; }
+      if ((m = s.match(/^N(\d)/))) { akt.volta = parseInt(m[1], 10); s = s.slice(2); continue; }
+      if ((m = s.match(/^\([^)]*\)/))) { altWeggelassen = true; s = s.slice(m[0].length); continue; }
+      const c = s[0];
+      if (c === ']') { gefuellt().doppelEnde = true; neuerTakt(); s = s.slice(1); continue; }
+      if (c === '|' || c === '[') { neuerTakt(); s = s.slice(1); continue; }
+      if (c === '{') { neuerTakt(); akt.wdhStart = true; s = s.slice(1); continue; }
+      if (c === '}') { gefuellt().wdhEnde = true; neuerTakt(); s = s.slice(1); continue; }
+      if (c === 'Z') { gefuellt().ende = true; neuerTakt(); s = s.slice(1); continue; }
+      if (c === 'x') { akt.akkorde = ['%']; s = s.slice(1); continue; }
+      if (c === 'n') { akt.akkorde.push('N.C.'); s = s.slice(1); continue; }
+      if (c === 'S') { akt.segno = true; s = s.slice(1); continue; }
+      if (c === 'Q') { akt.coda = true; s = s.slice(1); continue; }
+      if ((m = s.match(IREAL_AKKORD_RE))) {
+        let a = m[0];
+        // W = unsichtbarer Grundton: letzter Grundton + neuer Bass
+        if (a[0] === 'W') a = letzteWurzel ? letzteWurzel + a.slice(1) : a.slice(1);
+        else letzteWurzel = a.match(/^[A-G][#b]?/)[0];
+        if (a) akt.akkorde.push(a);
+        s = s.slice(m[0].length); continue;
+      }
+      s = s.slice(1); // Leerzeichen, Komma, s/l (Akkordgröße), p, f, U, Y …
+    }
+    const gefiltert = takte.filter(t => t.akkorde.length);
+    return { takte: gefiltert, taktart: gefiltert.length ? gefiltert[0].taktart : '4/4', altWeggelassen };
+  }
+
+  // Schreibt die notierten Takte in Spielreihenfolge aus.
+  function irealFormAusschreiben(takte) {
+    const warnungen = [];
+    const n = takte.length;
+    const txt = (t) => t.kommentare.join(' ').toLowerCase();
+
+    // Die D.C./D.S.-Anweisung steht irgendwo im letzten Abschnitt — gesprungen
+    // wird erst an dessen Ende (Schlussstrich, Doppelstrich, nächster Abschnitt).
+    const kommentarIdx = takte.findIndex(t => /d\.\s?[cs]\./.test(txt(t)));
+    let sprungIdx = kommentarIdx;
+    while (sprungIdx !== -1 && sprungIdx < n - 1 && !takte[sprungIdx].ende && !takte[sprungIdx].doppelEnde &&
+           !takte[sprungIdx + 1].neuerAbschnitt && !takte[sprungIdx + 1].coda) sprungIdx++;
+    const sprung = kommentarIdx === -1 ? null : {
+      idx: sprungIdx,
+      ziel: /d\.\s?s\./.test(txt(takte[kommentarIdx])) ? 'segno' : 'anfang',
+      bis: /fine/.test(txt(takte[kommentarIdx])) ? 'fine' : /coda/.test(txt(takte[kommentarIdx])) ? 'coda' : 'ende',
+    };
+
+    const codaIdx = takte.map((t, i) => (t.coda ? i : -1)).filter(i => i >= 0);
+    const zurCoda = codaIdx.length >= 2 ? codaIdx[0] : -1;
+    const codaStart = codaIdx.length >= 2 ? codaIdx[codaIdx.length - 1] : -1;
+    if (codaIdx.length === 1) warnungen.push('Nur ein Coda-Zeichen gefunden — Form prüfen');
+    const segnoIdx = takte.findIndex(t => t.segno);
+    const fineIdx = takte.findIndex(t => /\bfine\b/.test(txt(t)) && !/al fine/.test(txt(t)));
+
+    const voltaMax = (start) => {
+      let max = 0;
+      for (let i = start; i < n && !(i > start && takte[i].wdhStart); i++) {
+        if (takte[i].volta) max = Math.max(max, takte[i].volta);
+      }
+      return max;
+    };
+    // Durchläufe: Kommentar "3x", sonst höchste Volta, mindestens 2
+    const anzahl = (t, start) => {
+      const m = txt(t).match(/(\d+)\s*x/);
+      return m ? parseInt(m[1], 10) : Math.max(2, voltaMax(start));
+    };
+    const wdhEndeAb = (von) => {
+      for (let i = von; i < n; i++) if (takte[i].wdhEnde) return i;
+      return -1;
+    };
+    const letzteVolta = (von) => {
+      let max = takte[von].volta;
+      for (let i = von + 1; i < n && !takte[i].wdhStart && takte[i].volta !== 1; i++) {
+        if (takte[i].volta) max = Math.max(max, takte[i].volta);
+      }
+      return max;
+    };
+
+    // Durchläufe über Voltenzahl (nur bei ausdrücklichem "Nx"-Kommentar): Volta 1
+    // wiederholt sich, die letzte Volta kommt im letzten Durchlauf.
+    const voltaFuerDurchlauf = (wdh) => {
+      const ende = wdhEndeAb(wdh.start);
+      const m = ende !== -1 ? txt(takte[ende]).match(/(\d+)\s*x/) : null;
+      const max = voltaMax(wdh.start);
+      if (m && max >= 2 && parseInt(m[1], 10) > max) {
+        return wdh.pass < parseInt(m[1], 10) ? 1 : max;
+      }
+      return wdh.pass;
+    };
+
+    const folge = [];
+    let wdh = null;          // { start, pass } der laufenden Wiederholung
+    let gesprungen = false;  // D.C./D.S. schon genommen
+    let neuerEinsatz = false;
+    let zurueck = false;     // gerade an den Wiederholungsanfang gesprungen
+    let pos = 0;
+    let guard = 0;
+
+    while (pos < n) {
+      if (++guard > 2000) { warnungen.push('Form-Ausschreibung abgebrochen — Form prüfen'); break; }
+      const t = takte[pos];
+      if (t.wdhStart && !zurueck) wdh = { start: pos, pass: 1 };
+      zurueck = false;
+
+      // Falsche Volta überspringen
+      if (t.volta && wdh) {
+        const soll = gesprungen ? letzteVolta(pos) : voltaFuerDurchlauf(wdh);
+        if (t.volta !== soll) {
+          const ziel = takte.findIndex((x, i) => i > pos && x.volta === soll);
+          const ende = wdhEndeAb(pos);
+          pos = ziel !== -1 ? ziel : (ende !== -1 ? ende + 1 : pos + 1);
+          neuerEinsatz = true;
+          continue;
+        }
+      }
+
+      folge.push({ idx: pos, neuerEinsatz });
+      neuerEinsatz = false;
+
+      // Zur Coda: nach dem D.C./D.S. — oder ohne Sprunganweisung im letzten
+      // Durchlauf der Wiederholung, in der das Coda-Zeichen steht
+      if (pos === zurCoda && codaStart > pos) {
+        const ende = wdh ? wdhEndeAb(wdh.start) : -1;
+        const letzterDurchlauf = wdh && ende !== -1 && wdh.pass >= anzahl(takte[ende], wdh.start);
+        if (gesprungen ? sprung.bis === 'coda' : (!sprung && letzterDurchlauf)) {
+          pos = codaStart;
+          neuerEinsatz = true;
+          continue;
+        }
+      }
+      if (gesprungen && sprung.bis === 'fine' && pos === fineIdx) break;
+
+      if (t.wdhEnde && wdh && !gesprungen && wdh.pass < anzahl(t, wdh.start)) {
+        wdh.pass++;
+        pos = wdh.start;
+        zurueck = true;
+        neuerEinsatz = true;
+        continue;
+      }
+
+      if (sprung && pos === sprung.idx && !gesprungen) {
+        gesprungen = true;
+        let ziel = 0;
+        if (sprung.ziel === 'segno') {
+          if (segnoIdx === -1) warnungen.push('D.S. ohne Segno — springe an den Anfang');
+          else ziel = segnoIdx;
+        }
+        pos = ziel;
+        wdh = null;
+        neuerEinsatz = true;
+        continue;
+      }
+      if (t.ende) break;
+      pos++;
+    }
+
+    const erreicht = new Set(folge.map(f => f.idx));
+    const fehlend = n - erreicht.size;
+    if (fehlend > 0) warnungen.push(fehlend + ' Takte im Ablauf nicht erreicht — Form prüfen');
+    return { folge, codaStart, warnungen };
+  }
+
+  function irealSongZuStotco(rec) {
+    const gelesen = irealTakteLesen(rec.musik);
+    const form = irealFormAusschreiben(gelesen.takte);
+    const warnungen = form.warnungen.slice();
+    const unbekannt = new Set();
+    const taktwechsel = new Set();
+
+    const wandle = (a) => {
+      if (a === '%' || a === 'N.C.') return a;
+      const s = irealAkkordZuStotco(a);
+      if (parseChord(s)) return s;
+      unbekannt.add(a);
+      return a; // roh stehen lassen — sichtbar statt verschluckt
+    };
+    // "%" am Instanz-Anfang meint den notierten Vortakt, nicht den gespielten
+    const aufgeloest = (idx) => {
+      let i = idx;
+      while (i > 0 && gelesen.takte[i].akkorde.length === 1 && gelesen.takte[i].akkorde[0] === '%') i--;
+      return gelesen.takte[i].akkorde;
+    };
+
+    const instanzen = [];
+    let akt = null;
+    let imCoda = false;
+    for (const { idx, neuerEinsatz } of form.folge) {
+      const t = gelesen.takte[idx];
+      if (idx === form.codaStart) imCoda = true;
+      else if (t.neuerAbschnitt) imCoda = false;
+      const label = imCoda ? 'Coda' : t.label;
+      if (!akt || neuerEinsatz || t.neuerAbschnitt || idx === form.codaStart || label !== akt.label) {
+        akt = { label, takte: [], zeilen: [] };
+        if (t.taktart !== gelesen.taktart) akt.taktart = t.taktart;
+        instanzen.push(akt);
+      } else if (t.taktart !== (akt.taktart || gelesen.taktart)) {
+        taktwechsel.add(label + ': ' + t.taktart);
+      }
+      const quelle = akt.takte.length === 0 && t.akkorde[0] === '%' ? aufgeloest(idx) : t.akkorde;
+      akt.takte.push(quelle.map(wandle));
+    }
+
+    if (unbekannt.size) warnungen.push('Akkorde nicht erkannt: ' + [...unbekannt].join(', '));
+    if (taktwechsel.size) warnungen.push('Taktwechsel mitten im Abschnitt: ' + [...taktwechsel].join(', '));
+    if (gelesen.altWeggelassen) warnungen.push('Alternativ-Akkorde (in Klammern) weggelassen');
+
+    const { abschnitte, text } = abschnitteAusInstanzen(instanzen);
+    const km = String(rec.tonart || '').match(/^([A-G][#b]?)(-)?$/);
+    // Spielhinweise ("Repeat and fade") behalten, Form-Anweisungen sind ausgeschrieben
+    const hinweise = gelesen.takte.flatMap(t => t.kommentare)
+      .filter(k => !/d\.\s?[cs]\.|^\d+\s*x$|^fine$/i.test(k));
+    return {
+      song: {
+        titel: rec.titel,
+        kuenstler: rec.komponist || '',
+        originalTonart: km ? km[1] + (km[2] ? 'm' : '') : 'C',
+        taktart: gelesen.taktart,
+        tempo: rec.bpm || null,
+        transposeOffset: 0,
+        abschnitte: abschnitte.length ? abschnitte : [{ name: 'A', takte: [[]] }],
+        text: text.length ? text : [{ ref: 'A', zeilen: [] }],
+        notizen: hinweise.concat(warnungen).join('. '),
+        ireal: { stil: rec.stil || '', begleitstil: rec.begleitstil || '', komponist: rec.komponist || '' },
+        ungeprueft: true,
+      },
+      warnungen,
+    };
+  }
+
+  // Fehlt ein Stil, nimmt iReal "Pop" (in Forums-Playlists der häufigste
+  // Stil, also sicher bekannt).
+  const IREAL_STANDARD_STIL = 'Pop';
+
+  // "=" trennt Felder — darf in keinem Wert vorkommen
+  function irealFeld(s) {
+    return String(s || '').replace(/=/g, '-').trim();
+  }
+
+  // Wie echte iReal-Links: alles außer A-Z, a-z, 0-9 prozent-kodiert
+  function irealProzent(s) {
+    return Array.from(s).map(c => {
+      if (/[A-Za-z0-9]/.test(c)) return c;
+      const e = encodeURIComponent(c);
+      return e !== c ? e : '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0');
+    }).join('');
+  }
+
+  function stotcoSongZuIreal(song, offset) {
+    const off = offset == null ? (song.transposeOffset || 0) : offset;
+    // Offset 0: Schreibweise der Tonart unverändert (transposeKey würde Ebm→D#m, Gb→F# umschreiben)
+    let zielTonart = off === 0 ? (song.originalTonart || 'C') : transposeKey(song.originalTonart || 'C', off);
+    const useFlats = keyPrefersFlats(zielTonart);
+    // Tonart wie die Akkorde schreiben (Dm +1: D#m → Ebm, weil die Akkorde Eb/Bb heißen)
+    if (off !== 0 && useFlats) zielTonart = zielTonart.replace(/^[A-G][#b]?/, r => NOTES_FLAT[noteIndex(r)] || r);
+    const tr = (a) => (a === '%' || a === 'N.C.' ? a : transposeChord(a, off, { useFlats }));
+    const form = song.text && song.text.length ? song.text.map(b => b.ref) : song.abschnitte.map(a => a.name);
+    const songTakt = song.taktart || '4/4';
+
+    // Abschnittsmarker: A-D behalten ihren Buchstaben, Rest bekommt freie
+    const vergeben = new Map();
+    const frei = ['A', 'B', 'C', 'D'];
+    for (const a of song.abschnitte) {
+      if (/^[A-D]$/.test(a.name) && frei.includes(a.name)) {
+        vergeben.set(a.name, a.name);
+        frei.splice(frei.indexOf(a.name), 1);
+      }
+    }
+    const marker = (name) => {
+      const basis = name.replace(/(\s+\d+)+$/, '').toLowerCase();
+      if (basis === 'intro') return 'i';
+      if (basis === 'strophe' || basis === 'verse') return 'V';
+      if (!vergeben.has(name)) vergeben.set(name, frei.shift() || '');
+      return vergeben.get(name);
+    };
+
+    let musik = '';
+    let aktTakt = null;
+    for (const ref of form) {
+      const ab = song.abschnitte.find(a => a.name === ref);
+      if (!ab || !ab.takte.length) continue;
+      const m = marker(ref);
+      musik += '[' + (m ? '*' + m : '');
+      const takt = ab.taktart || songTakt;
+      if (takt !== aktTakt) { musik += 'T' + irealTaktCode(takt); aktTakt = takt; }
+      // Jedes Zeichen ist in iReal eine Zelle (4/4 = 4 Zellen): ab drei
+      // Akkorden Komma statt Leerzeichen, sonst läuft der Takt über.
+      musik += ab.takte.map(t => (t.length ? t.map(a => stotcoAkkordZuIreal(tr(a))).join(t.length > 2 ? ',' : ' ') : ' ')).join('|') + ']';
+    }
+    musik = musik.replace(/\]$/, 'Z');
+
+    const km = zielTonart.match(/^([A-G][#b]?)(m)?$/);
+    const meta = song.ireal || {};
+    return [
+      irealFeld(song.titel) || 'Unbekannter Song',
+      irealFeld(meta.komponist || song.kuenstler) || 'Unbekannt',
+      '',
+      irealFeld(meta.stil) || IREAL_STANDARD_STIL,
+      km ? km[1] + (km[2] ? '-' : '') : 'C',
+      '',
+      IREAL_MUSIK_PREFIX + irealVerwuerfeln(musik),
+      irealFeld(meta.begleitstil),
+      String(song.tempo || 0),
+      '1',
+    ].join('=');
+  }
+
+  function irealPlaylistLink(songStrings, name) {
+    const body = songStrings.length === 1 && !name
+      ? songStrings[0]
+      : songStrings.join('===') + '===' + (irealFeld(name) || 'stotco sheets');
+    return 'irealb://' + irealProzent(body);
+  }
+
+  function irealDublette(songs, titel) {
+    const t = String(titel || '').trim().toLowerCase();
+    return songs.some(s => String(s.titel || '').trim().toLowerCase() === t);
+  }
+
+  // ---------- UG-PDF pro Song ----------
+
+  const PDF_MAX_BYTES = 20 * 1024 * 1024;
+
+  function pdfPfad(songId) {
+    return 'pdf/' + songId + '.pdf';
+  }
+
+  // null wenn die Datei als PDF taugt, sonst deutscher Fehlertext.
+  function pdfDateiOk(datei) {
+    const name = String((datei && datei.name) || '');
+    const typ = String((datei && datei.type) || '');
+    const groesse = Number((datei && datei.size) || 0);
+    if (typ !== 'application/pdf' && !/\.pdf$/i.test(name)) return 'Keine PDF-Datei';
+    if (groesse <= 0) return 'Datei ist leer';
+    if (groesse > PDF_MAX_BYTES) return 'Datei größer als 20 MB';
+    return null;
+  }
+
+  // Kleinschreibung, Akzente/Satzzeichen weg, „the“ am Anfang/„, the“ am Ende weg.
+  function pdfNormName(s) {
+    let t = String(s || '').toLowerCase();
+    if (t.normalize) t = t.normalize('NFD').replace(/[̀-ͯ]/g, '');
+    t = t.replace(/[^a-z0-9]+/g, ' ').trim().replace(/\s+/g, ' ');
+    t = t.replace(/^the /, '').replace(/ the$/, '');
+    return t;
+  }
+
+  // Song zur UG-Übergabe: erst ugTabId, sonst eindeutiger Treffer Titel+Künstler, sonst null.
+  function songFuerUgPdf(songs, info) {
+    const liste = Array.isArray(songs) ? songs : [];
+    const tabId = info && info.tabId != null ? Number(info.tabId) : null;
+    if (tabId) {
+      const perId = liste.find(s => Number(s.ugTabId) === tabId);
+      if (perId) return perId;
+    }
+    const titel = pdfNormName(info && info.titel);
+    const kuenstler = pdfNormName(info && info.kuenstler);
+    if (!titel) return null;
+    const treffer = liste.filter(s =>
+      pdfNormName(s.titel) === titel && pdfNormName(s.kuenstler) === kuenstler);
+    return treffer.length === 1 ? treffer[0] : null;
+  }
+
+  // '#ugpdf=<tabId>|<titel>|<kuenstler>' (Teile encodeURIComponent-kodiert).
+  function parseUgPdfHash(hash) {
+    const m = /^#ugpdf=(.*)$/.exec(String(hash || ''));
+    if (!m) return null;
+    const teile = m[1].split('|').map(t => {
+      try { return decodeURIComponent(t); } catch (e) { return t; }
+    });
+    const tabId = parseInt(teile[0], 10);
+    return {
+      tabId: Number.isFinite(tabId) ? tabId : null,
+      titel: teile[1] || '',
+      kuenstler: teile[2] || '',
+    };
+  }
+
+  // '#ugimport=<base64-Text>[&tab=<tabId>]' vom Userscript; null wenn nicht lesbar.
+  function parseUgImportHash(hash) {
+    const m = /^#ugimport=([^&]*)(?:&tab=([0-9]+))?/.exec(String(hash || ''));
+    if (!m) return null;
+    try {
+      const text = decodeURIComponent(escape(atob(m[1])));
+      return { text, tabId: m[2] ? parseInt(m[2], 10) : null };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  return {
+    pdfPfad,
+    pdfDateiOk,
+    songFuerUgPdf,
+    parseUgPdfHash,
+    parseUgImportHash,
+    irealTakteLesen,
+    stotcoSongZuIreal,
+    irealPlaylistLink,
+    irealDublette,
+    irealFormAusschreiben,
+    irealSongZuStotco,
+    parseChord,
+    transposeChord,
+    irealVerwuerfeln,
+    irealLinksFinden,
+    irealLinkLesen,
+    irealAkkordZuStotco,
+    stotcoAkkordZuIreal,
+    irealTaktart,
+    irealTaktCode,
+    transposeKey,
+    keyPrefersFlats,
+    displayChord,
+    normalizeInputChord,
+    parseUGText,
+    verdichteTakte,
+    splitTextBlock,
+    freierAbschnittsname,
+    abschnitteAusInstanzen,
+  };
+})();
+</script>
+
+<!-- ============================================================
+     APP: State, Persistenz, Rendering. Läuft nur im Browser.
+     ============================================================ -->
+<script id="app">
+(function () {
+  'use strict';
+
+  const C = window.SheetsCore;
+  const STORAGE_KEY = 'stotco-sheets';
+
+  // Geteilte Setliste (Nur-Lese-Ansicht für die Band): ?s=<id>#k=<schlüssel>.
+  // Die Daten liegen verschlüsselt in share/<id>.json, der Schlüssel steht nur
+  // im Link-Teil nach # und geht nie an den Server.
+  const SHARE = (() => {
+    const id = new URLSearchParams(location.search).get('s');
+    const k = /[#&]k=([\w-]+)/.exec(location.hash);
+    return id && /^[\w-]{6,40}$/.test(id) ? { id, key: k ? k[1] : null } : null;
+  })();
+  const SHARE_BASIS = 'https://stotco.de/sheets/';
+  const SHARE_LOKAL_KEY = SHARE ? 'stotco-share-' + SHARE.id : null;
+  const EXPORT_REMINDER_THRESHOLD = 20;
+
+  // Nicht persistierter UI-Zustand
+  // Anzeige: Wiederholungen verdichten (Kompakt) oder alles ausschreiben.
+  // Wahl pro Gerät, bewusst außerhalb des Songstate (kein Export, kein Backup).
+  const ANSICHT_KEY = 'stotco-sheets-ansicht';
+  function ladeKompakt() {
+    try { return localStorage.getItem(ANSICHT_KEY) !== 'ausfuehrlich'; } catch (e) { return true; }
+  }
+  function speichereKompakt(kompakt) {
+    try { localStorage.setItem(ANSICHT_KEY, kompakt ? 'kompakt' : 'ausfuehrlich'); } catch (e) { /* ohne Speicher geht die Wahl nur bis zum Neuladen */ }
+  }
+
+  const ui = {
+    view: 'library', songId: null, suche: '',
+    kompakt: ladeKompakt(),    // verdichtetes Raster im Lesemodus (Bearbeiten ist immer ausführlich)
+    edit: false,               // Bearbeiten-Modus in der Songansicht
+    barSel: null,              // { sec, bar } — ausgewählter Takt im Editor
+    barErr: false,             // letzter Takt-Commit war ungültig
+    zeigeQuelle: false,        // UG-Originaltext im Editor einblenden
+    loeschen: null,            // Song-ID mit offener Lösch-Bestätigung
+    importPrefill: null,       // vom Userscript übergebener UG-Text (#ugimport=)
+    importPrefillTab: null,    // UG-Tab-ID dazu (&tab=), wird beim Übernehmen zu song.ugTabId
+    pdfZuordnung: null,        // { info, blob } — UG-PDF aus der Inbox wartet auf Song-Auswahl
+    bibTab: 'songs',           // Bibliothek: 'songs' | 'setlisten'
+    setlistId: null,           // geöffnete Setliste
+    slLoeschen: null,          // Setlist-ID mit offener Lösch-Bestätigung
+    dragIdx: null,             // Drag-and-drop: gezogener Eintrag
+    stageCtx: null,            // Bühne aus Setliste: { setlistId, pos }
+    neuerAbschnitt: false,     // Typ-Auswahl für neuen Abschnitt sichtbar
+    irealExport: false,        // Export-Panel in der Setliste offen
+    pdfStatus: null,           // { songId, text } — Meldung der PDF-Ablage in der Song-Leiste
+  };
+
+  const defaultState = () => ({
+    songs: [],
+    setlisten: [],
+    einstellungen: { notation: 'international' },
+    _aenderungenSeitExport: 0,
+  });
+
+  function demoSong() {
+    return {
+      id: 'demo-beispielsong',
+      titel: 'Beispielsong',
+      kuenstler: 'stotco',
+      originalTonart: 'C',
+      taktart: '4/4',
+      tempo: 100,
+      transposeOffset: 0,
+      abschnitte: [
+        { name: 'Intro', takte: [['C'], ['%'], ['F'], ['G']] },
+        { name: 'Strophe', takte: [['C'], ['F'], ['C'], ['F'], ['Am'], ['G'], ['F'], ['G']] },
+        { name: 'Refrain', takte: [['Am', 'G'], ['F'], ['Am', 'G'], ['F', 'G']] },
+        { name: 'Bridge', takte: [['Dm'], ['N.C.'], ['F'], ['G']] },
+      ],
+      text: [
+        { ref: 'Intro', zeilen: [] },
+        { ref: 'Strophe', zeilen: ['Dies ist die erste Strophe,', 'nur ein Demo, nichts Reales,', 'zeigt wie Text und Raster koppeln,', 'jede Marke, jede Farbe.'] },
+        { ref: 'Refrain', zeilen: ['Und der Refrain kommt wieder,', 'zwei Akkorde pro Takt.'] },
+        { ref: 'Strophe', zeilen: ['Zweite Strophe, gleiches Raster,', 'rechts steht es nur einmal,', 'denn wiederholte Teile', 'brauchen keine Kopie.'] },
+        { ref: 'Refrain', zeilen: ['Und der Refrain kommt wieder,', 'zwei Akkorde pro Takt.'] },
+        { ref: 'Bridge', zeilen: ['Hier die Bridge mit Pause —', 'N.C. heißt: nichts spielen.'] },
+      ],
+      notizen: 'Demo-Song zum Ausprobieren — kann gelöscht werden.',
+    };
+  }
+
+  let state = loadState();
+
+  function loadState() {
+    if (SHARE) return defaultState(); // wird nach dem Entschlüsseln befüllt
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) {
+        const s = defaultState();
+        s.songs.push(demoSong());
+        return s;
+      }
+      return Object.assign(defaultState(), JSON.parse(raw));
+    } catch (e) {
+      console.warn('State konnte nicht geladen werden, starte leer:', e);
+      return defaultState();
+    }
+  }
+
+  function saveState() {
+    if (SHARE) {
+      // Band-Ansicht: nur die eigenen Transpositionen merken, nichts zurückschreiben
+      try {
+        const sl = state.setlisten[0];
+        localStorage.setItem(SHARE_LOKAL_KEY, JSON.stringify({
+          songs: Object.fromEntries(state.songs.map(x => [x.id, x.transposeOffset || 0])),
+          eintraege: sl ? sl.eintraege.map(e => e.offsetOverride == null ? null : e.offsetOverride) : [],
+        }));
+      } catch (e) { /* ohne Speicher gilt die Tonart nur bis zum Neuladen */ }
+      render();
+      return;
+    }
+    state._aenderungenSeitExport += 1;
+    planeTeilenAktualisieren();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render();
+  }
+
+  // ---------- Setlisten teilen (verschlüsselt auf stotco.de/sheets) ----------
+
+  function b64url(bytes) {
+    let bin = '';
+    new Uint8Array(bytes).forEach(b => { bin += String.fromCharCode(b); });
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function vonB64url(str) {
+    const bin = atob(str.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((str.length + 3) % 4));
+    return Uint8Array.from(bin, c => c.charCodeAt(0));
+  }
+  async function strom(bytes, transform) {
+    return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(transform)).arrayBuffer());
+  }
+  async function aesKey(keyStr, nutzung) {
+    return crypto.subtle.importKey('raw', vonB64url(keyStr), 'AES-GCM', false, [nutzung]);
+  }
+  async function verschluesseln(obj, keyStr) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const roh = await strom(new TextEncoder().encode(JSON.stringify(obj)), new CompressionStream('gzip'));
+    const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, await aesKey(keyStr, 'encrypt'), roh);
+    return { v: 1, iv: b64url(iv), ct: b64url(ct) };
+  }
+  async function entschluesseln(datei, keyStr) {
+    const roh = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: vonB64url(datei.iv) },
+      await aesKey(keyStr, 'decrypt'), vonB64url(datei.ct));
+    return JSON.parse(new TextDecoder().decode(await strom(roh, new DecompressionStream('gzip'))));
+  }
+
+  function teilenLink(sl) {
+    return SHARE_BASIS + '?s=' + sl.share.id + '#k=' + sl.share.key;
+  }
+
+  // Inhalt der geteilten Setliste: nur ihre Songs, ohne UG-Rohtext, PDF und interne IDs.
+  function teilenPayload(sl) {
+    const ids = new Set(sl.eintraege.map(e => e.songId));
+    return {
+      setliste: { id: sl.id, name: sl.name, datum: sl.datum || null, eintraege: sl.eintraege },
+      songs: state.songs.filter(x => ids.has(x.id)).map(x => {
+        const k = Object.assign({}, x);
+        delete k.ugQuelle; delete k.pdf; delete k.ugTabId;
+        return k;
+      }),
+      einstellungen: { notation: state.einstellungen.notation },
+    };
+  }
+
+  // Verschlüsselt und legt share/<id>.json auf dem Mac mini ab; serve.py lädt
+  // danach auf stotco.de hoch. Unveränderter Inhalt wird nicht neu hochgeladen.
+  async function teileSetliste(sl, erzwingen) {
+    if (!sl.share) {
+      sl.share = { id: b64url(crypto.getRandomValues(new Uint8Array(9))), key: b64url(crypto.getRandomValues(new Uint8Array(32))) };
+    }
+    const payload = teilenPayload(sl);
+    const hash = b64url(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payload))));
+    if (!erzwingen && sl.share.hash === hash) return 'unveraendert';
+    payload.stand = new Date().toISOString();
+    const datei = await verschluesseln(payload, sl.share.key);
+    const res = await fetch('share/' + sl.share.id + '.json', { method: 'PUT', body: JSON.stringify(datei) });
+    if (!res.ok) throw new Error('Ablage fehlgeschlagen (HTTP ' + res.status + ')');
+    sl.share.hash = hash;
+    sl.share.stand = payload.stand;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return 'hochgeladen';
+  }
+
+  // Nach Änderungen geteilte Setlisten still nachziehen (gebündelt, 10 s Ruhe).
+  let teilenTimer = null;
+  function planeTeilenAktualisieren() {
+    if (SHARE || !state.setlisten.some(x => x.share)) return;
+    clearTimeout(teilenTimer);
+    teilenTimer = setTimeout(() => {
+      state.setlisten.filter(x => x.share).forEach(x =>
+        teileSetliste(x).catch(e => console.warn('Teilen-Aktualisierung:', e)));
+    }, 10000);
+  }
+
+  async function ladeGeteilteSetliste() {
+    const view = document.getElementById('view');
+    const fehler = (text) => view.replaceChildren(el('div', { class: 'sl-leer' }, text));
+    if (!SHARE.key) { fehler('Der Link ist unvollständig - bitte den ganzen Link verwenden.'); return; }
+    try {
+      const res = await fetch('share/' + SHARE.id + '.json?v=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) throw new Error('nicht gefunden');
+      const daten = await entschluesseln(await res.json(), SHARE.key);
+      state = Object.assign(defaultState(), {
+        songs: daten.songs, setlisten: [daten.setliste],
+        einstellungen: Object.assign(defaultState().einstellungen, daten.einstellungen),
+      });
+      try {
+        const lokal = JSON.parse(localStorage.getItem(SHARE_LOKAL_KEY) || 'null');
+        if (lokal) {
+          state.songs.forEach(x => { if (lokal.songs && x.id in lokal.songs) x.transposeOffset = lokal.songs[x.id]; });
+          state.setlisten[0].eintraege.forEach((e, i) => {
+            const o = lokal.eintraege && lokal.eintraege[i];
+            if (o == null) delete e.offsetOverride; else e.offsetOverride = o;
+          });
+        }
+      } catch (e) { /* eigene Tonarten gehen dann verloren, Inhalt bleibt */ }
+      ui.view = 'setlist'; ui.setlistId = daten.setliste.id;
+      document.title = daten.setliste.name + ' - stotco sheets';
+      ui.teilenStand = daten.stand || null;
+      render();
+    } catch (e) {
+      fehler('Setliste konnte nicht geladen werden (Link falsch oder nicht mehr gültig).');
+    }
+  }
+
+  function exportJson() {
+    const data = { ...state };
+    delete data._aenderungenSeitExport;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'stotco-sheets-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    state._aenderungenSeitExport = 0;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render();
+  }
+
+  function importJson(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (!Array.isArray(data.songs)) throw new Error('Keine songs[] in der Datei');
+        state = Object.assign(defaultState(), data, { _aenderungenSeitExport: 0 });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        render();
+      } catch (e) {
+        alert('Import fehlgeschlagen: ' + e.message);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  // ---------- DOM-Helfer (immer textContent, nie innerHTML → kein Escaping-Problem) ----------
+
+  function el(tag, attrs, ...children) {
+    const node = document.createElement(tag);
+    if (attrs) {
+      for (const [k, v] of Object.entries(attrs)) {
+        if (v == null) continue;
+        if (k === 'class') node.className = v;
+        else if (k === 'style') node.style.cssText = v;
+        else if (k === 'value') node.value = v;
+        else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+        else node.setAttribute(k, v);
+      }
+    }
+    for (const child of children.flat()) {
+      if (child == null) continue;
+      node.append(typeof child === 'string' ? document.createTextNode(child) : child);
+    }
+    return node;
+  }
+
+  // ---------- Abschnittsfarben ----------
+
+  const SECTION_TYPES = [
+    [/^(strophe|verse)/, 'strophe'],
+    [/^(refrain|chorus)/, 'refrain'],
+    [/^bridge/, 'bridge'],
+    [/^(intro|outro|ende)/, 'intro'],
+    [/^solo/, 'solo'],
+    [/^(zwischenspiel|interlude|instrumental)/, 'zwischenspiel'],
+    [/^(vor-?refrain|pre-?chorus)/, 'vorrefrain'],
+    [/^(nach-?refrain|post-?chorus)/, 'vorrefrain'],
+  ];
+
+  function sectionType(name) {
+    const n = (name || '').toLowerCase().trim();
+    for (const [re, type] of SECTION_TYPES) {
+      if (re.test(n)) return type;
+    }
+    return 'intro';
+  }
+
+  function sectionColor(name) {
+    return 'var(--c-' + sectionType(name) + ')';
+  }
+
+  // Anzeigename der Abschnittsmarke: Nummern-Suffixe („Strophe 2") werden
+  // nur bei bekannten Abschnittstypen entfernt — intern bleiben die Namen
+  // eindeutig, weil Textblöcke Abschnitte über den Namen referenzieren.
+  function anzeigeName(name) {
+    const basis = (name || '').replace(/(\s+\d+)+$/, '');
+    if (basis === name) return name;
+    const n = basis.toLowerCase().trim();
+    return SECTION_TYPES.some(([re]) => re.test(n)) ? basis : name;
+  }
+
+  // ---------- Akkord-Anzeige (Transposition + Notation) ----------
+
+  function chordForDisplay(song, symbol) {
+    const off = song.transposeOffset || 0;
+    const zielTonart = C.transposeKey(song.originalTonart || 'C', off);
+    const useFlats = C.keyPrefersFlats(zielTonart);
+    return C.displayChord(
+      C.transposeChord(symbol, off, { useFlats }),
+      state.einstellungen.notation
+    );
+  }
+
+  function keyForDisplay(song) {
+    const off = song.transposeOffset || 0;
+    const ziel = C.transposeKey(song.originalTonart || 'C', off);
+    return C.displayChord(ziel, state.einstellungen.notation);
+  }
+
+  // ---------- Views ----------
+
+  function renderLibrary(view) {
+    view.append(
+      el('div', { class: 'song-toolbar' },
+        el('span', { class: 'tab-schalter' },
+          el('button', {
+            class: ui.bibTab === 'songs' ? 'aktiv' : '',
+            onclick: () => { ui.bibTab = 'songs'; render(); },
+          }, 'Songs'),
+          el('button', {
+            class: ui.bibTab === 'setlisten' ? 'aktiv' : '',
+            onclick: () => { ui.bibTab = 'setlisten'; render(); },
+          }, 'Setlisten (' + state.setlisten.length + ')')
+        )
+      )
+    );
+
+    if (ui.bibTab === 'setlisten') {
+      renderSetlists(view);
+      return;
+    }
+
+    const q = ui.suche.toLowerCase();
+    const treffer = state.songs.filter(s =>
+      (s.titel + ' ' + s.kuenstler).toLowerCase().includes(q));
+
+    view.append(
+      el('div', { class: 'song-toolbar' },
+        el('button', {
+          class: 'primaer',
+          onclick: () => {
+            const song = {
+              id: 'song-' + Date.now().toString(36),
+              titel: 'Neuer Song', kuenstler: '', originalTonart: 'C',
+              taktart: '4/4', tempo: null, transposeOffset: 0,
+              abschnitte: [{ name: 'Strophe', takte: [[], [], [], []] }],
+              text: [{ ref: 'Strophe', zeilen: [] }],
+              notizen: '',
+            };
+            state.songs.push(song);
+            ui.view = 'song'; ui.songId = song.id; ui.edit = true;
+            saveState();
+          },
+        }, '+ Neuer Song'),
+        el('button', {
+          onclick: () => { ui.view = 'import'; render(); },
+        }, 'Import (UG-Text)'),
+        el('button', {
+          onclick: () => { ui.view = 'irealimport'; render(); },
+        }, 'Import (iReal Pro)')
+      ),
+      el('input', {
+        class: 'lib-suche', type: 'search', placeholder: 'Suche nach Titel oder Künstler…',
+        value: ui.suche,
+        oninput: (e) => { ui.suche = e.target.value; render(); },
+      }),
+      treffer.length === 0
+        ? el('div', { class: 'lib-leer' },
+            state.songs.length === 0
+              ? 'Noch keine Songs — per Import laden oder neuen Song anlegen.'
+              : 'Kein Treffer für „' + ui.suche + '".')
+        : el('div', {}, treffer.map(song =>
+            el('div', {
+              class: 'lib-item',
+              role: 'button', tabindex: '0',
+              onclick: () => { ui.view = 'song'; ui.songId = song.id; render(); },
+              onkeydown: (e) => { if (e.key === 'Enter') { ui.view = 'song'; ui.songId = song.id; render(); } },
+            },
+              el('span', { class: 't' }, song.titel),
+              el('span', { class: 'a' }, song.kuenstler || ''),
+              el('span', { class: 'k' }, keyForDisplay(song)),
+              ui.loeschen === song.id
+                ? el('button', {
+                    class: 'loeschen bestaetigen',
+                    onclick: (e) => {
+                      e.stopPropagation();
+                      state.songs = state.songs.filter(s => s.id !== song.id);
+                      ui.loeschen = null;
+                      saveState();
+                    },
+                  }, 'wirklich löschen?')
+                : el('button', {
+                    class: 'loeschen', title: 'Song löschen',
+                    onclick: (e) => { e.stopPropagation(); ui.loeschen = song.id; render(); },
+                  }, '✕')
+            )))
+    );
+    const suche = view.querySelector('.lib-suche');
+    if (document.activeElement === document.body && ui.suche) suche.focus();
+  }
+
+  // ---------- Editor-Operationen ----------
+
+  function commitBar(song, secIdx, barIdx, rawValue) {
+    const tokens = rawValue.trim().split(/\s+/).filter(Boolean);
+    const normalized = tokens.map(t => C.normalizeInputChord(t, state.einstellungen.notation));
+    if (normalized.some(t => !C.parseChord(t))) {
+      ui.barErr = true;
+      return false;
+    }
+    ui.barErr = false;
+    song.abschnitte[secIdx].takte[barIdx] = normalized;
+    return true;
+  }
+
+  function selectNextBar(song) {
+    if (!ui.barSel) return;
+    const { sec, bar } = ui.barSel;
+    const takte = song.abschnitte[sec].takte;
+    if (bar + 1 < takte.length) {
+      ui.barSel = { sec, bar: bar + 1 };
+    } else if (sec + 1 < song.abschnitte.length) {
+      ui.barSel = { sec: sec + 1, bar: 0 };
+    } else {
+      ui.barSel = null;
+    }
+  }
+
+  function selectPrevBar(song) {
+    if (!ui.barSel) return;
+    const { sec, bar } = ui.barSel;
+    if (bar > 0) {
+      ui.barSel = { sec, bar: bar - 1 };
+    } else if (sec > 0) {
+      const prev = song.abschnitte[sec - 1].takte;
+      ui.barSel = prev.length ? { sec: sec - 1, bar: prev.length - 1 } : null;
+    }
+  }
+
+  function barInputValue(song, secIdx, barIdx) {
+    return song.abschnitte[secIdx].takte[barIdx]
+      .map(a => C.displayChord(a, state.einstellungen.notation))
+      .join(' ');
+  }
+
+  const SUFFIX_CHIPS = ['m', '7', 'm7', 'maj7', 'sus4', 'sus2', 'dim', 'add9', '/'];
+
+  function renderBarToolbar(song) {
+    const { sec, bar } = ui.barSel;
+    const takte = song.abschnitte[sec].takte;
+    const ops = el('div', { class: 'takt-ops' },
+      el('button', { onclick: () => { takte.splice(bar, 0, []); saveState(); } }, '+ davor'),
+      el('button', { onclick: () => { takte.splice(bar + 1, 0, []); ui.barSel = { sec, bar: bar + 1 }; saveState(); } }, '+ danach'),
+      el('button', {
+        onclick: () => {
+          // teilen: ein Akkord → derselbe zweimal (halbe Takte), danach editieren
+          const t = takte[bar];
+          if (t.length === 1) { takte[bar] = [t[0], t[0]]; saveState(); }
+        },
+      }, 'teilen'),
+      el('button', {
+        title: 'Akkord hält einen weiteren Takt (%)',
+        onclick: () => { takte.splice(bar + 1, 0, ['%']); ui.barSel = { sec, bar: bar + 1 }; saveState(); },
+      }, 'halten %'),
+      el('button', {
+        onclick: () => {
+          takte.splice(bar, 1);
+          ui.barSel = takte.length ? { sec, bar: Math.min(bar, takte.length - 1) } : null;
+          saveState();
+        },
+      }, 'Takt löschen')
+    );
+    const chips = el('div', { class: 'suffix-chips' },
+      SUFFIX_CHIPS.map(s =>
+        el('button', {
+          // mousedown statt click, damit das Bar-Input den Fokus nicht verliert
+          onmousedown: (e) => {
+            e.preventDefault();
+            const input = document.querySelector('.bar.aktiv input');
+            if (input) { input.value += s; input.focus(); }
+          },
+        }, s))
+    );
+    return el('div', {}, ops, chips);
+  }
+
+  // Akkorde eines Takts im Lesemodus (ohne Editor)
+  function ruheTaktInhalt(bar, song, takt) {
+    for (const akkord of takt) {
+      const shown = chordForDisplay(song, akkord);
+      const cls = akkord === '%' ? 'ch rep' : akkord === 'N.C.' ? 'ch nc' : 'ch';
+      bar.append(el('span', { class: cls }, shown));
+    }
+  }
+
+  // Verdichtete Ansicht: pro Segment ein eigenes Raster, Wiederholungsmuster
+  // mit Badge "n×". Gibt null zurück, wenn nichts zu verdichten ist — dann
+  // zeigt renderBars das normale Raster.
+  function renderBarsKompakt(song, abschnitt) {
+    const segmente = C.verdichteTakte(abschnitt.takte);
+    if (!segmente.some(sg => sg.muster)) return null;
+    const wrap = el('div', { class: 'bars-segmente' });
+    for (const sg of segmente) {
+      const grid = el('div', { class: 'bars' + (sg.muster ? ' wdh' : '') });
+      for (const takt of (sg.muster || sg.takte)) {
+        const bar = el('div', { class: 'bar' });
+        ruheTaktInhalt(bar, song, takt);
+        grid.append(bar);
+      }
+      if (sg.muster) {
+        grid.append(el('span', { class: 'wdh-badge', title: 'Wiederholung: ' + sg.n + ' Mal' }, sg.n + '×'));
+      }
+      wrap.append(grid);
+    }
+    return wrap;
+  }
+
+  // opts.kompakt überschreibt die Geräte-Einstellung (Import-Vorschau: immer ausführlich)
+  function renderBars(song, abschnitt, secIdx, opts) {
+    const kompakt = opts && 'kompakt' in opts ? opts.kompakt : ui.kompakt && !ui.edit;
+    if (kompakt) {
+      const k = renderBarsKompakt(song, abschnitt);
+      if (k) return k;
+    }
+    const bars = el('div', { class: 'bars' });
+    abschnitt.takte.forEach((takt, barIdx) => {
+      const aktiv = ui.edit && ui.barSel && ui.barSel.sec === secIdx && ui.barSel.bar === barIdx;
+      const bar = el('div', {
+        class: 'bar' + (ui.edit ? ' editierbar' : '') + (aktiv ? ' aktiv' : ''),
+        onclick: ui.edit && !aktiv
+          ? () => { ui.barSel = { sec: secIdx, bar: barIdx }; ui.barErr = false; render(); }
+          : null,
+      });
+      if (aktiv) {
+        bar.append(el('input', {
+          value: barInputValue(song, secIdx, barIdx),
+          class: ui.barErr ? 'fehler' : '',
+          spellcheck: 'false',
+          onkeydown: (e) => {
+            const input = e.target;
+            if (e.key === 'Enter') {
+              if (commitBar(song, secIdx, barIdx, input.value)) { selectNextBar(song); saveState(); }
+              else render();
+            } else if (e.key === 'Escape') {
+              ui.barSel = null; ui.barErr = false; render();
+            } else if (e.key === 'ArrowRight' && input.selectionStart === input.value.length) {
+              e.preventDefault();
+              if (commitBar(song, secIdx, barIdx, input.value)) { selectNextBar(song); saveState(); }
+            } else if (e.key === 'ArrowLeft' && input.selectionStart === 0 && input.selectionEnd === 0) {
+              e.preventDefault();
+              if (commitBar(song, secIdx, barIdx, input.value)) { selectPrevBar(song); saveState(); }
+            } else if (e.key === 'Backspace' && input.value === '') {
+              e.preventDefault();
+              const takte = song.abschnitte[secIdx].takte;
+              takte.splice(barIdx, 1);
+              ui.barSel = takte.length
+                ? { sec: secIdx, bar: Math.max(0, barIdx - 1) }
+                : null;
+              saveState();
+            }
+          },
+          onblur: (e) => {
+            // Blur durch Klick auf Chips/Buttons nicht committen — die regeln das selbst
+            if (ui.barSel && ui.barSel.sec === secIdx && ui.barSel.bar === barIdx) {
+              commitBar(song, secIdx, barIdx, e.target.value);
+            }
+          },
+        }));
+      } else {
+        ruheTaktInhalt(bar, song, takt);
+      }
+      bars.append(bar);
+    });
+    return bars;
+  }
+
+  function renderSectionOps(song, secIdx) {
+    const abschnitte = song.abschnitte;
+    const a = abschnitte[secIdx];
+    return el('span', { class: 'sec-ops' },
+      el('button', {
+        title: 'nach oben', disabled: secIdx === 0 ? '' : null,
+        onclick: () => { abschnitte.splice(secIdx - 1, 0, abschnitte.splice(secIdx, 1)[0]); ui.barSel = null; saveState(); },
+      }, '↑'),
+      el('button', {
+        title: 'nach unten', disabled: secIdx === abschnitte.length - 1 ? '' : null,
+        onclick: () => { abschnitte.splice(secIdx + 1, 0, abschnitte.splice(secIdx, 1)[0]); ui.barSel = null; saveState(); },
+      }, '↓'),
+      el('button', {
+        onclick: () => {
+          const kopie = JSON.parse(JSON.stringify(a));
+          kopie.name = C.freierAbschnittsname(abschnitte, a.name);
+          abschnitte.splice(secIdx + 1, 0, kopie);
+          saveState();
+        },
+      }, 'duplizieren'),
+      el('button', { onclick: () => { a.takte.push([]); saveState(); } }, '+ Takt'),
+      el('button', {
+        onclick: () => {
+          abschnitte.splice(secIdx, 1);
+          song.text = song.text.filter(b => b.ref !== a.name);
+          ui.barSel = null;
+          saveState();
+        },
+      }, 'Abschnitt löschen')
+    );
+  }
+
+  function renderGridSection(song, abschnitt, secIdx) {
+    const head = el('div', { class: 'grid-head' });
+    if (ui.edit) {
+      head.append(
+        el('input', {
+          class: 'sec-rename', value: abschnitt.name, spellcheck: 'false',
+          onchange: (e) => {
+            const alt = abschnitt.name;
+            const neu = e.target.value.trim() || alt;
+            abschnitt.name = neu;
+            song.text.forEach(b => { if (b.ref === alt) b.ref = neu; });
+            saveState();
+          },
+        }),
+        el('input', {
+          class: 'sec-taktart', value: abschnitt.taktart || song.taktart || '4/4', spellcheck: 'false',
+          title: 'Taktart dieses Abschnitts',
+          onchange: (e) => { abschnitt.taktart = e.target.value.trim(); saveState(); },
+        }),
+        renderSectionOps(song, secIdx)
+      );
+    } else {
+      head.append(
+        el('span', { class: 'sec-mark', style: '--sec:' + sectionColor(abschnitt.name) }, anzeigeName(abschnitt.name)),
+        el('span', { class: 'taktart' }, abschnitt.taktart || song.taktart || '4/4')
+      );
+    }
+    const teil = el('div', {
+      class: 'grid-sec',
+      style: '--sec:' + sectionColor(abschnitt.name),
+      'data-sectype': sectionType(abschnitt.name),
+    }, head, renderBars(song, abschnitt, secIdx));
+    if (ui.edit && ui.barSel && ui.barSel.sec === secIdx) {
+      teil.append(renderBarToolbar(song));
+    }
+    return teil;
+  }
+
+  function renderTextBlock(song, block, blockIdx) {
+    if (!ui.edit) {
+      return el('div', { class: 'lyr-sec', 'data-sectype': sectionType(block.ref) },
+        el('span', { class: 'sec-mark', style: '--sec:' + sectionColor(block.ref) }, anzeigeName(block.ref)),
+        el('div', { class: 'zeilen' }, (block.zeilen || []).join('\n'))
+      );
+    }
+    const zeilenAusText = (value) =>
+      value.split('\n').map(z => z.trimEnd()).filter((z, i, arr) =>
+        z !== '' || i < arr.length - 1);
+
+    const textarea = el('textarea', {
+      spellcheck: 'false',
+      onchange: (e) => {
+        block.zeilen = zeilenAusText(e.target.value);
+        saveState();
+      },
+    }, (block.zeilen || []).join('\n'));
+
+    return el('div', { class: 'lyr-sec lyr-edit' },
+      el('select', {
+        onchange: (e) => { block.ref = e.target.value; saveState(); },
+      }, song.abschnitte.map(a =>
+        el('option', { value: a.name, selected: a.name === block.ref ? '' : null }, a.name))),
+      el('span', { class: 'sec-ops' },
+        el('button', {
+          disabled: blockIdx === 0 ? '' : null,
+          onclick: () => { song.text.splice(blockIdx - 1, 0, song.text.splice(blockIdx, 1)[0]); saveState(); },
+        }, '↑'),
+        el('button', {
+          disabled: blockIdx === song.text.length - 1 ? '' : null,
+          onclick: () => { song.text.splice(blockIdx + 1, 0, song.text.splice(blockIdx, 1)[0]); saveState(); },
+        }, '↓'),
+        el('button', {
+          title: 'Block vor der Cursorzeile teilen — die Takte des Abschnitts wandern anteilig mit',
+          // mousedown + preventDefault: Cursorposition in der Textarea erhalten
+          onmousedown: (e) => {
+            e.preventDefault();
+            block.zeilen = zeilenAusText(textarea.value);
+            const zeile = textarea.value.slice(0, textarea.selectionStart).split('\n').length - 1;
+            if (C.splitTextBlock(song, blockIdx, zeile)) saveState();
+          },
+        }, '✂ ab Cursor teilen'),
+        el('button', { onclick: () => { song.text.splice(blockIdx, 1); saveState(); } }, 'löschen')
+      ),
+      textarea
+    );
+  }
+
+  function renderHeadEdit(song) {
+    const feld = (label, value, onchange, cls) =>
+      el('div', { class: cls || '' },
+        el('label', {}, label),
+        el('input', { value: value == null ? '' : String(value), spellcheck: 'false', onchange }));
+    return el('div', { class: 'head-edit' },
+      feld('Titel', song.titel, (e) => { song.titel = e.target.value.trim() || song.titel; saveState(); }, 'feld-titel'),
+      feld('Künstler', song.kuenstler, (e) => { song.kuenstler = e.target.value.trim(); saveState(); }),
+      feld('Tonart', C.displayChord(song.originalTonart || 'C', state.einstellungen.notation), (e) => {
+        const norm = C.normalizeInputChord(e.target.value.trim(), state.einstellungen.notation);
+        if (C.parseChord(norm)) { song.originalTonart = norm; saveState(); } else render();
+      }),
+      feld('Taktart', song.taktart || '4/4', (e) => { song.taktart = e.target.value.trim() || '4/4'; saveState(); }),
+      feld('Tempo', song.tempo, (e) => {
+        const n = parseInt(e.target.value, 10);
+        song.tempo = Number.isFinite(n) ? n : null;
+        saveState();
+      }),
+      feld('Notizen', song.notizen, (e) => { song.notizen = e.target.value.trim(); saveState(); }, 'feld-notizen')
+    );
+  }
+
+  function renderTransposeCtl(song) {
+    const off = ((song.transposeOffset || 0) % 12 + 12) % 12;
+    const setOffset = (n) => { song.transposeOffset = ((n % 12) + 12) % 12; saveState(); };
+    return el('span', { class: 'transpose-ctl' },
+      el('button', { title: 'Halbton runter', onclick: () => setOffset(off - 1) }, '−'),
+      el('span', { class: 't-key' }, keyForDisplay(song)),
+      el('button', { title: 'Halbton hoch', onclick: () => setOffset(off + 1) }, '+'),
+      el('select', {
+        title: 'Zieltonart wählen',
+        onchange: (e) => setOffset(parseInt(e.target.value, 10)),
+      }, Array.from({ length: 12 }, (_, i) =>
+        el('option', { value: String(i), selected: i === off ? '' : null },
+          C.displayChord(C.transposeKey(song.originalTonart || 'C', i), state.einstellungen.notation) +
+          (i === 0 ? ' (Original)' : '')))),
+      off !== 0 ? el('span', { class: 't-orig' },
+        'orig. ' + C.displayChord(song.originalTonart || 'C', state.einstellungen.notation)) : null
+    );
+  }
+
+  // ---------- Setlisten ----------
+
+  function setlistById(id) {
+    return state.setlisten.find(s => s.id === id) || null;
+  }
+
+  function songById(id) {
+    return state.songs.find(s => s.id === id) || null;
+  }
+
+  // Effektiver Song für Setlist-Kontext: Override ersetzt den Song-Offset.
+  // Flache Kopie — alle Renderfunktionen arbeiten unverändert damit.
+  function songMitOverride(eintrag) {
+    const song = songById(eintrag.songId);
+    if (!song) return null;
+    if (eintrag.offsetOverride == null) return song;
+    return Object.assign({}, song, { transposeOffset: eintrag.offsetOverride });
+  }
+
+  function renderSetlists(view) {
+    let nameFeld;
+    view.append(
+      el('div', { class: 'song-toolbar' },
+        el('span', { style: 'display:inline-flex; gap:0.4rem; align-items:center' },
+          nameFeld = el('input', {
+            class: 'lib-suche', style: 'margin:0; max-width:18rem', type: 'text',
+            placeholder: 'Neue Setliste (Name)…',
+            onkeydown: (e) => { if (e.key === 'Enter') neueSetliste(); },
+          }),
+          el('button', { class: 'primaer', onclick: () => neueSetliste() }, '+ Anlegen'))
+      )
+    );
+    function neueSetliste() {
+      const name = nameFeld.value.trim();
+      if (!name) return;
+      const sl = { id: 'sl-' + Date.now().toString(36), name, datum: '', eintraege: [] };
+      state.setlisten.push(sl);
+      ui.setlistId = sl.id; ui.view = 'setlist';
+      saveState();
+    }
+
+    if (state.setlisten.length === 0) {
+      view.append(el('div', { class: 'sl-leer' },
+        'Noch keine Setlisten. Eine Setliste ist die Song-Reihenfolge für einen Gig — druckbar und für den Bühnenmodus.'));
+      return;
+    }
+    view.append(el('div', {}, state.setlisten.map(sl =>
+      el('div', {
+        class: 'lib-item', role: 'button', tabindex: '0',
+        onclick: () => { ui.view = 'setlist'; ui.setlistId = sl.id; render(); },
+        onkeydown: (e) => { if (e.key === 'Enter') { ui.view = 'setlist'; ui.setlistId = sl.id; render(); } },
+      },
+        el('span', { class: 't' }, sl.name),
+        el('span', { class: 'a' }, (sl.datum ? sl.datum + ' · ' : '') + sl.eintraege.length + ' Songs'),
+        ui.slLoeschen === sl.id
+          ? el('button', {
+              class: 'loeschen bestaetigen',
+              onclick: (e) => {
+                e.stopPropagation();
+                state.setlisten = state.setlisten.filter(x => x.id !== sl.id);
+                ui.slLoeschen = null;
+                saveState();
+              },
+            }, 'wirklich löschen?')
+          : el('button', {
+              class: 'loeschen', title: 'Setliste löschen',
+              onclick: (e) => { e.stopPropagation(); ui.slLoeschen = sl.id; render(); },
+            }, '✕')
+      ))));
+  }
+
+  function renderSetlistEintrag(sl, eintrag, idx) {
+    const song = songById(eintrag.songId);
+    const zeile = el('div', {
+      class: 'sl-eintrag',
+      draggable: SHARE ? null : 'true',
+      ondragstart: (e) => { ui.dragIdx = idx; e.dataTransfer.effectAllowed = 'move'; },
+      ondragover: (e) => { e.preventDefault(); zeile.classList.add('drag-ueber'); },
+      ondragleave: () => zeile.classList.remove('drag-ueber'),
+      ondrop: (e) => {
+        e.preventDefault();
+        if (ui.dragIdx == null || ui.dragIdx === idx) return;
+        const [bewegt] = sl.eintraege.splice(ui.dragIdx, 1);
+        sl.eintraege.splice(idx, 0, bewegt);
+        ui.dragIdx = null;
+        saveState();
+      },
+    },
+      el('span', { class: 'griff', title: 'Ziehen zum Umsortieren' }, '≡'),
+      el('span', { class: 'nr' }, String(idx + 1) + '.')
+    );
+
+    if (!song) {
+      zeile.append(el('span', { class: 'kuenstler' }, '(Song gelöscht)'),
+        el('span', { class: 'spacer' }),
+        el('button', { onclick: () => { sl.eintraege.splice(idx, 1); saveState(); } }, 'entfernen'));
+      return zeile;
+    }
+
+    const eff = songMitOverride(eintrag);
+    zeile.append(
+      el('button', {
+        class: 'titel-link',
+        onclick: () => { ui.view = 'song'; ui.songId = song.id; render(); },
+      }, song.titel),
+      el('span', { class: 'kuenstler' }, song.kuenstler || ''),
+      el('span', { class: 'spacer' }),
+      el('span', { class: 'transpose-ctl', style: 'margin-left:0' },
+        el('button', {
+          title: 'Halbton runter (nur in dieser Setliste)',
+          onclick: () => {
+            const basis = eintrag.offsetOverride != null ? eintrag.offsetOverride : (song.transposeOffset || 0);
+            eintrag.offsetOverride = ((basis - 1) % 12 + 12) % 12;
+            saveState();
+          },
+        }, '−'),
+        el('span', { class: 't-key' }, keyForDisplay(eff)),
+        el('button', {
+          title: 'Halbton hoch (nur in dieser Setliste)',
+          onclick: () => {
+            const basis = eintrag.offsetOverride != null ? eintrag.offsetOverride : (song.transposeOffset || 0);
+            eintrag.offsetOverride = ((basis + 1) % 12 + 12) % 12;
+            saveState();
+          },
+        }, '+'),
+        eintrag.offsetOverride != null
+          ? el('button', {
+              title: 'Override entfernen — Tonart wie im Song',
+              onclick: () => { delete eintrag.offsetOverride; saveState(); },
+            }, '= Song')
+          : el('span', { class: 'override-hinweis' }, 'wie Song')
+      ),
+      el('span', { class: 'sec-ops' },
+        el('button', {
+          disabled: idx === 0 ? '' : null,
+          onclick: () => { sl.eintraege.splice(idx - 1, 0, sl.eintraege.splice(idx, 1)[0]); saveState(); },
+        }, '↑'),
+        el('button', {
+          disabled: idx === sl.eintraege.length - 1 ? '' : null,
+          onclick: () => { sl.eintraege.splice(idx + 1, 0, sl.eintraege.splice(idx, 1)[0]); saveState(); },
+        }, '↓'),
+        el('button', { onclick: () => { sl.eintraege.splice(idx, 1); saveState(); } }, 'entfernen')
+      )
+    );
+    return zeile;
+  }
+
+  function renderTeilenPanel(sl) {
+    const status = el('span', { class: 'import-hinweis' });
+    const feld = el('input', { type: 'text', readonly: '', value: sl.share ? teilenLink(sl) : '' });
+    const hochladen = (erzwingen) => {
+      status.textContent = 'Wird verschlüsselt und hochgeladen…';
+      teileSetliste(sl, erzwingen).then((r) => {
+        feld.value = teilenLink(sl);
+        feld.style.display = '';
+        status.textContent = r === 'unveraendert' ? 'Online-Stand ist aktuell.'
+          : 'Hochgeladen - in 1-2 Minuten unter dem Link erreichbar.';
+      }).catch((e) => { status.textContent = e.message; });
+    };
+    if (!sl.share) feld.style.display = 'none';
+    return el('div', { class: 'ireal-export teilen-panel' },
+      el('div', { class: 'import-hinweis' },
+        'Nur-Lese-Link für die Band: ansehen und selbst transponieren, nichts ändern. ' +
+        'Inhalt liegt verschlüsselt auf stotco.de, der Schlüssel steckt nur im Link - wer den Link hat, kann lesen. ' +
+        'Änderungen an Songs der Setliste werden automatisch nachgeladen, solange stotco sheets hier offen ist.'),
+      el('div', { class: 'song-toolbar' },
+        el('button', { class: 'primaer', onclick: () => hochladen(false) }, sl.share ? 'Jetzt aktualisieren' : 'Link erzeugen'),
+        sl.share ? el('button', {
+          onclick: () => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(teilenLink(sl)).then(() => { status.textContent = 'Link kopiert.'; });
+            } else { feld.select(); status.textContent = 'Link markiert - bitte selbst kopieren.'; }
+          },
+        }, 'Link kopieren') : null,
+        status),
+      feld);
+  }
+
+  // iReal-Link der Setliste — jeder Song in seiner Setlisten-Tonart
+  // (songMitOverride setzt den Override als transposeOffset).
+  function irealExportLink(sl, songs) {
+    return C.irealPlaylistLink(songs.map(s => C.stotcoSongZuIreal(s)), sl.name + (sl.datum ? ' ' + sl.datum : ''));
+  }
+
+  function htmlEscape(s) {
+    return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function renderSetlist(view, sl) {
+    view.append(
+      el('div', { class: 'song-toolbar' },
+        SHARE ? null : el('button', {
+          class: 'zurueck', style: 'margin-bottom:0',
+          onclick: () => { ui.view = 'library'; ui.bibTab = 'setlisten'; ui.setlistId = null; render(); },
+        }, '← Setlisten'),
+        SHARE ? null : el('button', {
+          class: ui.teilen ? 'primaer' : '',
+          title: 'Nur-Lese-Link für die Band (verschlüsselt auf stotco.de)',
+          onclick: () => { ui.teilen = !ui.teilen; render(); },
+        }, 'Teilen'),
+        sl.eintraege.length ? el('button', {
+          class: 'primaer',
+          onclick: () => { enterStageSetlist(sl, 0); },
+        }, '▶ Bühne') : null,
+        sl.eintraege.length ? el('button', {
+          onclick: () => { ui.view = 'setlistprint'; render(); },
+        }, 'Komplett drucken') : null,
+        sl.eintraege.length ? el('button', {
+          onclick: () => { ui.irealExport = !ui.irealExport; render(); },
+        }, '→ iReal Pro') : null
+      ),
+      SHARE && ui.teilenStand ? el('div', { class: 'import-hinweis' },
+        'Stand: ' + new Date(ui.teilenStand).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }) +
+        ' - Tonart pro Song mit − / + selbst einstellen (bleibt auf diesem Gerät).') : null,
+      !SHARE && ui.teilen ? renderTeilenPanel(sl) : null,
+      ui.irealExport && sl.eintraege.length ? (() => {
+        // Gelöschte Songs fallen raus (songMitOverride liefert null)
+        const songs = sl.eintraege.map(songMitOverride).filter(Boolean);
+        if (!songs.length) {
+          return el('div', { class: 'ireal-export' },
+            el('div', { class: 'import-hinweis' }, 'Keine Songs zum Exportieren — die Einträge dieser Setliste sind gelöscht.'));
+        }
+        const link = irealExportLink(sl, songs);
+        const status = el('span', { class: 'import-hinweis' });
+        // Fallback ohne Zwischenablage (http über Tailscale = kein Secure Context)
+        const feld = el('textarea', { readonly: '', rows: '3', style: 'display:none;width:100%;margin-top:0.4rem;font:0.8rem monospace' });
+        const zeigeFeld = () => {
+          feld.value = link;
+          feld.style.display = '';
+          feld.focus();
+          feld.select();
+          feld.setSelectionRange(0, link.length);
+          status.textContent = 'Kopieren hier nicht möglich — Link ist unten markiert, bitte selbst kopieren.';
+        };
+        // UG-Import legt "Capo N." nur in den Notizen ab: Akkorde sind dann Griffbilder
+        const capo = songs.filter(x => /\bCapo \d/i.test(x.notizen || '')).map(x => x.titel);
+        return el('div', { class: 'ireal-export' },
+          el('div', { class: 'import-hinweis' },
+            songs.length + ' Songs in Setlisten-Tonart. Bläser stellen in iReal ihr Instrument ein ' +
+            '(B/Es) — iReal transponiert selbst.'),
+          capo.length ? el('div', { class: 'import-hinweis ireal-capo' },
+            el('span', { class: 'badge-warn' }, 'Capo-Songs:'),
+            ' Akkorde sind Griffbilder, nicht klingend — vor dem Export Tonart prüfen: ' + capo.join(', ')) : null,
+          el('div', { class: 'song-toolbar' },
+            el('a', { href: link }, 'In iReal Pro öffnen'),
+            el('button', {
+              onclick: () => {
+                if (!(navigator.clipboard && navigator.clipboard.writeText)) { zeigeFeld(); return; }
+                navigator.clipboard.writeText(link)
+                  .then(() => { status.textContent = 'Link kopiert.'; })
+                  .catch(zeigeFeld);
+              },
+            }, 'Link kopieren'),
+            el('button', {
+              class: 'primaer',
+              onclick: () => {
+                const titel = htmlEscape(sl.name);
+                const html = '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width">' +
+                  '<title>' + titel + '</title><body style="font:1.2rem system-ui;padding:2rem">' +
+                  '<p><a href="' + link + '">' + titel + ' in iReal Pro öffnen</a></p>' +
+                  '<p style="color:#666">Auf dem iPad/iPhone mit installiertem iReal Pro antippen.</p></body>';
+                const href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+                const a = document.createElement('a');
+                a.href = href;
+                a.download = (sl.name || 'setliste').replace(/[^\wäöüÄÖÜß.-]+/g, '-') + '-ireal.html';
+                a.click();
+                // Safari/iPadOS bricht den Download ab, wenn die URL sofort widerrufen wird
+                setTimeout(() => URL.revokeObjectURL(href), 30000);
+              },
+            }, 'Als Datei speichern'),
+            status),
+          feld);
+      })() : null,
+      el('div', { class: 'sl-kopf' },
+        el('input', {
+          type: 'text', value: sl.name, spellcheck: 'false',
+          onchange: (e) => { sl.name = e.target.value.trim() || sl.name; saveState(); },
+        }),
+        el('input', {
+          type: 'date', value: sl.datum || '',
+          onchange: (e) => { sl.datum = e.target.value; saveState(); },
+        })
+      )
+    );
+
+    if (sl.eintraege.length === 0) {
+      view.append(el('div', { class: 'sl-leer' }, 'Noch keine Songs — unten aus der Bibliothek hinzufügen.'));
+    } else {
+      view.append(el('div', {}, sl.eintraege.map((eintrag, idx) => renderSetlistEintrag(sl, eintrag, idx))));
+    }
+
+    const verfuegbar = state.songs.filter(s => !sl.eintraege.some(e => e.songId === s.id));
+    if (verfuegbar.length) {
+      let picker;
+      view.append(el('div', { class: 'sl-hinzu' },
+        picker = el('select', {}, verfuegbar.map(s =>
+          el('option', { value: s.id }, s.titel + (s.kuenstler ? ' — ' + s.kuenstler : '')))),
+        el('button', {
+          class: 'primaer',
+          onclick: () => { sl.eintraege.push({ songId: picker.value }); saveState(); },
+        }, '+ zur Setliste')
+      ));
+    }
+  }
+
+  function renderSetlistPrint(view, sl) {
+    document.documentElement.style.setProperty('--pscale', '1');
+    const eintraege = sl.eintraege.map(e => ({ eintrag: e, song: songMitOverride(e) })).filter(x => x.song);
+    view.append(
+      el('div', { class: 'song-toolbar' },
+        el('button', {
+          class: 'zurueck', style: 'margin-bottom:0',
+          onclick: () => { ui.view = 'setlist'; render(); },
+        }, '← Setliste'),
+        el('button', { class: 'primaer', onclick: () => window.print() }, 'Drucken')
+      ),
+      el('div', { class: 'print-deckblatt' },
+        el('h2', {}, sl.name),
+        el('div', { class: 'datum' }, sl.datum || ''),
+        el('table', {},
+          el('tr', {}, el('th', {}, '#'), el('th', {}, 'Song'), el('th', {}, 'Tonart'), el('th', {}, 'Tempo')),
+          eintraege.map(({ song }, i) =>
+            el('tr', {},
+              el('td', { class: 'nr' }, String(i + 1)),
+              el('td', {}, song.titel + (song.kuenstler ? ' — ' + song.kuenstler : '')),
+              el('td', { class: 'tonart' }, keyForDisplay(song)),
+              el('td', {}, song.tempo ? String(song.tempo) : '')))
+        )
+      )
+    );
+    for (const { song } of eintraege) {
+      const lyricsCol = el('div', { class: 'lyrics-col' },
+        song.text.map((block) => el('div', { class: 'lyr-sec', 'data-sectype': sectionType(block.ref) },
+          el('span', { class: 'sec-mark', style: '--sec:' + sectionColor(block.ref) }, anzeigeName(block.ref)),
+          el('div', { class: 'zeilen' }, (block.zeilen || []).join('\n')))));
+      const gridCol = el('div', { class: 'grid-col' },
+        song.abschnitte.map((abschnitt) =>
+          el('div', { class: 'grid-sec', style: '--sec:' + sectionColor(abschnitt.name), 'data-sectype': sectionType(abschnitt.name) },
+            el('div', { class: 'grid-head' },
+              el('span', { class: 'sec-mark', style: '--sec:' + sectionColor(abschnitt.name) }, anzeigeName(abschnitt.name)),
+              el('span', { class: 'taktart' }, abschnitt.taktart || song.taktart || '4/4')),
+            renderBars(song, abschnitt, -1))));
+      view.append(el('div', { class: 'print-song' },
+        el('div', { class: 'sheet-head' },
+          el('div', {},
+            el('div', { class: 'titel' }, song.titel),
+            el('div', { class: 'kuenstler' }, song.kuenstler || '')),
+          el('div', { class: 'meta' },
+            el('span', {}, el('span', { class: 'label' }, 'Tonart'), keyForDisplay(song)),
+            el('span', {}, el('span', { class: 'label' }, 'Takt'), song.taktart || '4/4'))),
+        renderSheetBody(song, lyricsCol, gridCol)
+      ));
+    }
+  }
+
+  // ---------- Zwei-Spalten-Körper mit ziehbarer Trennlinie ----------
+
+  function renderSheetBody(song, lyricsCol, gridCol) {
+    const body = el('div', {
+      class: 'sheet-body',
+      style: '--split:' + (song.split || 55),
+    });
+    const divider = el('div', {
+      class: 'split-divider',
+      title: 'Spaltenbreite ziehen · Doppelklick setzt zurück',
+      onpointerdown: (e) => {
+        e.preventDefault();
+        divider.setPointerCapture(e.pointerId);
+        divider.classList.add('zieht');
+        const rect = body.getBoundingClientRect();
+        const move = (ev) => {
+          const pct = Math.min(75, Math.max(25, ((ev.clientX - rect.left) / rect.width) * 100));
+          body.style.setProperty('--split', pct.toFixed(1));
+        };
+        const up = (ev) => {
+          divider.classList.remove('zieht');
+          divider.removeEventListener('pointermove', move);
+          divider.removeEventListener('pointerup', up);
+          const pct = parseFloat(body.style.getPropertyValue('--split'));
+          if (Number.isFinite(pct)) { song.split = Math.round(pct); saveState(); }
+        };
+        divider.addEventListener('pointermove', move);
+        divider.addEventListener('pointerup', up);
+      },
+      ondblclick: () => { delete song.split; saveState(); },
+    });
+    body.append(lyricsCol, divider, gridCol);
+    return body;
+  }
+
+  // ---------- Bühnenmodus ----------
+
+  let wakeLock = null;
+  async function wakeLockAn() {
+    try {
+      if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    } catch (e) { console.warn('Wake Lock nicht verfügbar:', e); }
+  }
+  function wakeLockAus() {
+    if (wakeLock) { wakeLock.release().catch(() => {}); wakeLock = null; }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (ui.view === 'stage' && document.visibilityState === 'visible') wakeLockAn();
+  });
+
+  function enterStage(song) {
+    ui.view = 'stage';
+    ui.songId = song.id;
+    ui.stageCtx = null;
+    ui.edit = false; ui.barSel = null;
+    wakeLockAn();
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+    render();
+  }
+
+  function enterStageSetlist(sl, pos) {
+    ui.view = 'stage';
+    ui.stageCtx = { setlistId: sl.id, pos };
+    ui.edit = false; ui.barSel = null;
+    wakeLockAn();
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+    render();
+  }
+
+  function exitStage() {
+    ui.view = ui.stageCtx ? 'setlist' : 'song';
+    ui.stageCtx = null;
+    wakeLockAus();
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    render();
+  }
+
+  // Vollbild per Esc/System verlassen beendet auch den Bühnenmodus
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && ui.view === 'stage') exitStage();
+  });
+
+  // Blättern: erst innerhalb des Songs (bildschirmweise), an den Rändern
+  // weiter zum nächsten/vorigen Song der Setliste.
+  function stageBlaettern(richtung) {
+    const amEnde = window.scrollY + window.innerHeight >= document.body.scrollHeight - 20;
+    const amAnfang = window.scrollY <= 10;
+    if (ui.stageCtx) {
+      const sl = setlistById(ui.stageCtx.setlistId);
+      if (sl) {
+        if (richtung > 0 && amEnde && ui.stageCtx.pos < sl.eintraege.length - 1) {
+          ui.stageCtx.pos += 1;
+          render();
+          window.scrollTo(0, 0);
+          return;
+        }
+        if (richtung < 0 && amAnfang && ui.stageCtx.pos > 0) {
+          ui.stageCtx.pos -= 1;
+          render();
+          window.scrollTo(0, 0);
+          return;
+        }
+      }
+    }
+    const schritt = (window.innerHeight - 60) * richtung;
+    window.scrollBy({ top: schritt, behavior: 'smooth' });
+  }
+
+  function renderStage(view, song) {
+    const zoom = state.einstellungen.stageZoom || 1.25;
+    document.documentElement.style.setProperty('--stage-zoom', zoom);
+
+    const setZoom = (z) => {
+      state.einstellungen.stageZoom = Math.min(2.2, Math.max(0.7, Math.round(z * 20) / 20));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      render();
+    };
+
+    const sl = ui.stageCtx ? setlistById(ui.stageCtx.setlistId) : null;
+    const ansicht = state.einstellungen.stageAnsicht || 'beide';
+    const ANSICHTEN = { beide: 'Text + Akkorde', text: 'nur Text', raster: 'nur Akkorde' };
+    view.append(
+      el('div', { class: 'stage-bar' },
+        el('button', { onclick: exitStage, title: 'Bühnenmodus beenden' }, '✕'),
+        el('span', { class: 'titel-klein' },
+          song.titel + '  ·  ' + keyForDisplay(song) +
+          (song.tempo ? '  ·  ' + song.tempo + ' bpm' : '')),
+        el('span', { class: 'spacer' }),
+        sl ? el('span', { class: 'titel-klein', style: 'font-weight:400' },
+          (ui.stageCtx.pos + 1) + ' / ' + sl.eintraege.length) : null,
+        el('button', {
+          title: 'Ansicht wechseln: beide Spalten / nur Text / nur Akkorde',
+          onclick: () => {
+            const reihe = ['beide', 'text', 'raster'];
+            state.einstellungen.stageAnsicht = reihe[(reihe.indexOf(ansicht) + 1) % reihe.length];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            render();
+          },
+        }, ANSICHTEN[ansicht]),
+        el('button', { onclick: () => setZoom(zoom - 0.1), title: 'kleiner' }, 'A−'),
+        el('button', { onclick: () => setZoom(zoom + 0.1), title: 'größer' }, 'A+')
+      ),
+      el('div', { class: 'tap-zone links', onclick: () => stageBlaettern(-1) }),
+      el('div', { class: 'tap-zone rechts', onclick: () => stageBlaettern(1) })
+    );
+
+    const inhalt = el('div', { class: 'stage-inhalt' });
+    const lyricsCol = el('div', { class: 'lyrics-col' },
+      song.text.map((block, i) => renderTextBlock(song, block, i)));
+    const gridCol = el('div', { class: 'grid-col' },
+      song.abschnitte.map((abschnitt, i) => renderGridSection(song, abschnitt, i)));
+    if (ansicht === 'text') {
+      inhalt.append(el('div', { class: 'sheet-body einspaltig' }, lyricsCol));
+    } else if (ansicht === 'raster') {
+      inhalt.append(el('div', { class: 'sheet-body einspaltig' }, gridCol));
+    } else {
+      inhalt.append(renderSheetBody(song, lyricsCol, gridCol));
+    }
+    view.append(inhalt);
+  }
+
+  function renderImportVorschau(container, raw, zeilenTakte) {
+    container.replaceChildren();
+    if (!raw.trim()) {
+      container.append(el('div', { class: 'v-leer' }, 'Die Vorschau erscheint beim Einfügen.'));
+      return;
+    }
+    const r = C.parseUGText(raw, { zeilenTakte });
+    container.append(
+      el('div', { class: 'v-titel' }, r.titel + (r.kuenstler ? ' — ' + r.kuenstler : '')),
+      el('div', { class: 'v-meta' },
+        'Tonart ' + C.displayChord(r.originalTonart, state.einstellungen.notation) +
+        (r.capo ? ' · Capo ' + r.capo : '') +
+        (r.warnungen.length ? ' · ⚠ ' + r.warnungen.join('. ') : ''))
+    );
+    const pseudoSong = { transposeOffset: 0, originalTonart: r.originalTonart };
+    for (const abschnitt of r.abschnitte) {
+      container.append(
+        el('div', { class: 'grid-sec', style: '--sec:' + sectionColor(abschnitt.name) },
+          el('div', { class: 'grid-head' },
+            el('span', { class: 'sec-mark', style: '--sec:' + sectionColor(abschnitt.name) }, anzeigeName(abschnitt.name))),
+          renderBars(pseudoSong, abschnitt, -1, { kompakt: false })
+        ));
+    }
+  }
+
+  function ugSuche(query) {
+    const q = (query || '').trim();
+    if (!q) return;
+    window.open('https://www.ultimate-guitar.com/search.php?search_type=title&value=' +
+      encodeURIComponent(q), '_blank');
+  }
+
+  function renderEinstellungen(view) {
+    const e = state.einstellungen;
+    const speichern = () => { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); render(); };
+    const radio = (gruppe, wert, aktuell, label, setzen) =>
+      el('label', { class: 'radio' },
+        el('input', {
+          type: 'radio', name: gruppe, value: wert,
+          checked: aktuell === wert ? '' : null,
+          onchange: () => { setzen(wert); speichern(); },
+        }), label);
+
+    view.append(
+      el('button', {
+        class: 'zurueck',
+        onclick: () => { ui.view = 'library'; render(); },
+      }, '← Bibliothek'),
+      el('div', { class: 'einst-gruppe' },
+        el('h3', {}, 'Notation'),
+        radio('notation', 'international', e.notation, 'International (B, Bb)', v => e.notation = v),
+        radio('notation', 'deutsch', e.notation, 'Deutsch (H, B)', v => e.notation = v),
+        el('div', { class: 'hinweis' }, 'Gespeichert wird immer international — die Notation ist reine Anzeige.')
+      ),
+      el('div', { class: 'einst-gruppe' },
+        el('h3', {}, 'Bühnenmodus: Ansicht'),
+        radio('stageAnsicht', 'beide', e.stageAnsicht || 'beide', 'Text + Akkorde (zwei Spalten)', v => e.stageAnsicht = v),
+        radio('stageAnsicht', 'text', e.stageAnsicht || 'beide', 'Nur Text', v => e.stageAnsicht = v),
+        radio('stageAnsicht', 'raster', e.stageAnsicht || 'beide', 'Nur Akkorde (Kompaktmodus)', v => e.stageAnsicht = v),
+        el('div', { class: 'hinweis' }, 'Auch direkt in der Bühnen-Leiste umschaltbar.')
+      ),
+      el('div', { class: 'einst-gruppe' },
+        el('h3', {}, 'Bühnenmodus: Schriftgröße'),
+        el('span', { class: 'einst-zoom' },
+          el('button', {
+            onclick: () => { e.stageZoom = Math.max(0.7, Math.round(((e.stageZoom || 1.25) - 0.1) * 20) / 20); speichern(); },
+          }, 'A−'),
+          el('span', { class: 'wert' }, Math.round((e.stageZoom || 1.25) * 100) + ' %'),
+          el('button', {
+            onclick: () => { e.stageZoom = Math.min(2.2, Math.round(((e.stageZoom || 1.25) + 0.1) * 20) / 20); speichern(); },
+          }, 'A+'))
+      ),
+      el('div', { class: 'einst-gruppe' },
+        el('h3', {}, 'UG-Import'),
+        el('label', { class: 'radio' },
+          el('input', {
+            type: 'checkbox',
+            checked: e.importFuellen !== false ? '' : null,
+            onchange: (ev) => { e.importFuellen = ev.target.checked; speichern(); },
+          }),
+          'Zeilen standardmäßig auf 4 Takte auffüllen (letzter Akkord hält)')
+      )
+    );
+  }
+
+  function renderImport(view) {
+    let feld, vorschau;
+    let fuellen = state.einstellungen.importFuellen !== false;
+    // Tab-ID nur zusammen mit dem Prefill-Text übernehmen, sonst hinge sie an einem fremden Import
+    const prefillTab = ui.importPrefill ? ui.importPrefillTab : null;
+    ui.importPrefillTab = null;
+    let timer = null;
+    const updateVorschau = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => renderImportVorschau(vorschau, feld.value, fuellen ? 4 : 0), 250);
+    };
+
+    view.append(
+      el('button', {
+        class: 'zurueck',
+        onclick: () => { ui.view = 'library'; render(); },
+      }, '← Bibliothek'),
+      el('div', { class: 'import-hinweis' },
+        'Kompletten Song-Text von Ultimate Guitar links einfügen — oder mit dem Userscript ' +
+        '(ug-import.user.js, Tampermonkey) direkt von der UG-Seite übergeben. ' +
+        'Rechts erscheint sofort das geparste Raster — erst bei „Übernehmen" wird gespeichert.'),
+      el('div', { class: 'song-toolbar', style: 'margin-top:0.6rem' },
+        (() => {
+          const suchfeld = el('input', {
+            class: 'ug-suche', type: 'search', placeholder: 'Song auf Ultimate Guitar suchen…',
+            onkeydown: (e) => { if (e.key === 'Enter') ugSuche(suchfeld.value); },
+          });
+          return el('span', { style: 'display:inline-flex; gap:0.4rem; align-items:center; flex:1' },
+            suchfeld,
+            el('button', { onclick: () => ugSuche(suchfeld.value) }, 'Auf UG suchen'));
+        })()
+      ),
+      el('div', { class: 'import-grid' },
+        el('div', {},
+          feld = el('textarea', { class: 'import-feld', spellcheck: 'false', placeholder: '[Verse 1]\nG        D        Am\nMama take this badge off of me\n…', oninput: updateVorschau }),
+          el('label', { class: 'import-opts' },
+            el('input', {
+              type: 'checkbox', checked: fuellen ? '' : null,
+              onchange: (e) => { fuellen = e.target.checked; updateVorschau(); },
+            }),
+            'Zeilen auf 4 Takte auffüllen (letzter Akkord hält, als % markiert)'),
+          el('div', { class: 'song-toolbar' },
+            el('button', {
+              class: 'primaer',
+              onclick: () => {
+                const r = C.parseUGText(feld.value, { zeilenTakte: fuellen ? 4 : 0 });
+                const song = {
+                  id: 'song-' + Date.now().toString(36),
+                  titel: r.titel, kuenstler: r.kuenstler,
+                  originalTonart: r.originalTonart, taktart: '4/4', tempo: null,
+                  transposeOffset: 0,
+                  abschnitte: r.abschnitte.length ? r.abschnitte : [{ name: 'Strophe', takte: [[], [], [], []] }],
+                  text: r.text.length ? r.text : [{ ref: 'Strophe', zeilen: [] }],
+                  notizen: (r.capo ? 'Capo ' + r.capo + '. ' : '') + r.warnungen.join('. '),
+                  ugQuelle: feld.value,
+                  ungeprueft: true,
+                };
+                if (prefillTab) song.ugTabId = prefillTab;
+                state.songs.push(song);
+                ui.view = 'song'; ui.songId = song.id; ui.edit = true;
+                saveState();
+              },
+            }, 'Übernehmen')
+          )
+        ),
+        vorschau = el('div', { class: 'import-vorschau' })
+      )
+    );
+    if (ui.importPrefill) {
+      feld.value = ui.importPrefill;
+      ui.importPrefill = null;
+      renderImportVorschau(vorschau, feld.value, fuellen ? 4 : 0);
+    } else {
+      renderImportVorschau(vorschau, '', 4);
+    }
+    feld.focus();
+  }
+
+  // iReal-Import: Link oder HTML-Export einfügen bzw. Datei wählen, Songs
+  // auswählen, übernehmen. Große Forums-Playlists: nichts vorausgewählt,
+  // Suche zum Eingrenzen, höchstens 200 Zeilen gleichzeitig.
+  function renderIrealImport(view) {
+    let feld, filter, liste;
+    let funde = [];
+
+    const auswerten = () => {
+      funde = [];
+      for (const link of C.irealLinksFinden(feld.value)) {
+        for (const rec of C.irealLinkLesen(link).songs) {
+          const r = C.irealSongZuStotco(rec);
+          funde.push({ song: r.song, warnungen: r.warnungen, dublette: C.irealDublette(state.songs, rec.titel), gewaehlt: false });
+        }
+      }
+      if (funde.length <= 20) funde.forEach(f => { f.gewaehlt = !f.dublette; });
+      zeichne();
+    };
+
+    const zeichne = () => {
+      const q = filter.value.trim().toLowerCase();
+      const sichtbar = funde.filter(f => !q ||
+        f.song.titel.toLowerCase().includes(q) || f.song.kuenstler.toLowerCase().includes(q));
+      const gewaehlt = funde.filter(f => f.gewaehlt).length;
+      liste.replaceChildren(el('div', {},
+        el('div', { class: 'import-hinweis' }, funde.length
+          ? funde.length + ' Songs gefunden, ' + gewaehlt + ' ausgewählt'
+          : 'Noch kein iReal-Link erkannt.'),
+        sichtbar.slice(0, 200).map(f => el('label', { class: 'ireal-fund' },
+          el('input', {
+            type: 'checkbox', checked: f.gewaehlt ? '' : null,
+            onchange: (e) => { f.gewaehlt = e.target.checked; zeichne(); },
+          }),
+          el('span', {}, f.song.titel + (f.song.kuenstler ? ' — ' + f.song.kuenstler : '') + ' · ' + f.song.originalTonart),
+          f.dublette ? el('span', { class: 'badge-warn' }, 'schon in der Bibliothek') : null,
+          f.warnungen.length ? el('span', { class: 'badge-warn', title: f.warnungen.join('\n') }, 'Form prüfen') : null
+        )),
+        sichtbar.length > 200
+          ? el('div', { class: 'import-hinweis' }, '… ' + (sichtbar.length - 200) + ' weitere — Suche eingrenzen')
+          : null,
+        gewaehlt ? el('div', { class: 'song-toolbar' },
+          el('button', {
+            class: 'primaer',
+            onclick: () => {
+              const basis = Date.now().toString(36);
+              funde.filter(f => f.gewaehlt).forEach((f, i) => {
+                state.songs.push(Object.assign({ id: 'song-' + basis + '-' + i }, f.song));
+              });
+              ui.view = 'library';
+              saveState();
+            },
+          }, gewaehlt + ' Songs übernehmen')) : null
+      ));
+    };
+
+    view.append(
+      el('button', {
+        class: 'zurueck',
+        onclick: () => { ui.view = 'library'; render(); },
+      }, '← Bibliothek'),
+      el('div', { class: 'import-hinweis' },
+        'iReal-Pro-Link einfügen (in iReal: Teilen → Link kopieren) oder eine HTML-Datei aus iReal ' +
+        'bzw. dem iReal-Forum wählen. Wiederholungen, Volten und D.S./Coda werden ausgeschrieben; ' +
+        'Songs mit „Form prüfen" bitte im Editor gegenlesen.'),
+      el('div', { class: 'song-toolbar', style: 'margin-top:0.6rem' },
+        el('input', {
+          type: 'file', accept: '.html,.htm,.txt',
+          onchange: (e) => {
+            const datei = e.target.files[0];
+            if (!datei) return;
+            datei.text().then(t => { feld.value = t; auswerten(); });
+          },
+        })
+      ),
+      feld = el('textarea', { class: 'import-feld', spellcheck: 'false', placeholder: 'irealb://…', oninput: auswerten }),
+      filter = el('input', { class: 'ug-suche', type: 'search', placeholder: 'In den Funden suchen…', oninput: () => zeichne() }),
+      liste = el('div', {})
+    );
+    zeichne();
+    feld.focus();
+  }
+
+  // ---------- UG-PDF pro Song ----------
+
+  // Lädt eine PDF-Datei als pdf/<songId>.pdf auf den Server; setzt song.pdf nur bei Erfolg.
+  async function ladePdfHoch(song, datei) {
+    const fehler = C.pdfDateiOk(datei);
+    if (fehler) {
+      ui.pdfStatus = { songId: song.id, text: fehler };
+      render();
+      return false;
+    }
+    ui.pdfStatus = { songId: song.id, text: 'PDF wird hochgeladen…' };
+    render();
+    let res;
+    try {
+      res = await fetch(C.pdfPfad(song.id), { method: 'PUT', body: datei });
+    } catch (e) {
+      ui.pdfStatus = { songId: song.id, text: 'Upload fehlgeschlagen (Server nicht erreichbar)' };
+      render();
+      return false;
+    }
+    if (!res.ok) {
+      ui.pdfStatus = { songId: song.id, text: 'Upload fehlgeschlagen (' + res.status + ')' };
+      render();
+      return false;
+    }
+    song.pdf = C.pdfPfad(song.id);
+    ui.pdfStatus = { songId: song.id, text: 'PDF gespeichert' };
+    saveState();
+    return true;
+  }
+
+  function pdfDateiWaehlen(song) {
+    const input = el('input', { type: 'file', accept: 'application/pdf,.pdf', style: 'display:none' });
+    input.addEventListener('change', () => {
+      const datei = input.files && input.files[0];
+      input.remove();
+      if (datei) ladePdfHoch(song, datei);
+    });
+    document.body.append(input);
+    input.click();
+  }
+
+  function pdfKnoepfe(song) {
+    const status = ui.pdfStatus && ui.pdfStatus.songId === song.id ? ui.pdfStatus.text : null;
+    return [
+      song.pdf
+        ? el('button', { onclick: () => window.open(song.pdf + '?v=' + Date.now(), '_blank') }, 'PDF')
+        : el('button', { onclick: () => pdfDateiWaehlen(song) }, 'PDF ablegen'),
+      song.pdf && ui.edit
+        ? el('button', { onclick: () => pdfDateiWaehlen(song) }, 'PDF ersetzen')
+        : null,
+      status ? el('span', { class: 'pdf-status' }, status) : null,
+    ];
+  }
+
+  function pdfDropHandler(song) {
+    return {
+      ondragover: (e) => {
+        if (!e.dataTransfer || ![...e.dataTransfer.types].includes('Files')) return;
+        e.preventDefault();
+        e.currentTarget.classList.add('drop-aktiv');
+      },
+      ondragleave: (e) => { e.currentTarget.classList.remove('drop-aktiv'); },
+      ondrop: (e) => {
+        e.currentTarget.classList.remove('drop-aktiv');
+        const datei = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (!datei) return;
+        e.preventDefault();
+        ladePdfHoch(song, datei);
+      },
+    };
+  }
+
+  function renderSong(view, song) {
+    view.append(
+      el('div', Object.assign({ class: 'song-toolbar' }, pdfDropHandler(song)),
+        el('button', {
+          class: 'zurueck', style: 'margin-bottom:0',
+          onclick: () => {
+            ui.view = SHARE ? 'setlist' : 'library';
+            ui.songId = null; ui.edit = false; ui.barSel = null; render();
+          },
+        }, SHARE ? '← Setliste' : '← Bibliothek'),
+        el('button', {
+          class: (ui.edit ? 'primaer' : '') + ' nur-lokal',
+          onclick: () => {
+            if (ui.edit) delete song.ungeprueft; // Editor verlassen = Raster gilt als geprüft
+            ui.edit = !ui.edit; ui.barSel = null; ui.barErr = false;
+            saveState();
+          },
+        }, ui.edit ? 'Fertig' : 'Bearbeiten'),
+        song.ungeprueft ? el('span', { class: 'badge-warn' }, 'Raster ungeprüft') : null,
+        el('button', { onclick: () => window.print() }, 'Drucken'),
+        SHARE ? null : pdfKnoepfe(song),
+        ui.edit ? null : el('span', { class: 'ansicht-wahl', title: 'Wiederholungen im Raster verdichten oder alle Takte zeigen' },
+          el('button', {
+            class: ui.kompakt ? 'primaer' : '',
+            onclick: () => { ui.kompakt = true; speichereKompakt(true); render(); },
+          }, 'Kompakt'),
+          el('button', {
+            class: ui.kompakt ? '' : 'primaer',
+            onclick: () => { ui.kompakt = false; speichereKompakt(false); render(); },
+          }, 'Ausführlich')),
+        ui.edit ? null : el('button', { onclick: () => enterStage(song) }, 'Bühne'),
+        renderTransposeCtl(song),
+        ui.edit ? el('button', {
+          class: ui.neuerAbschnitt ? 'primaer' : '',
+          onclick: () => { ui.neuerAbschnitt = !ui.neuerAbschnitt; render(); },
+        }, '+ Abschnitt') : null,
+        ui.edit ? el('button', {
+          onclick: () => { song.text.push({ ref: (song.abschnitte[0] || {}).name || '', zeilen: [] }); saveState(); },
+        }, '+ Textblock') : null,
+        ui.edit && song.ugQuelle ? el('button', {
+          class: ui.zeigeQuelle ? 'primaer' : '',
+          onclick: () => { ui.zeigeQuelle = !ui.zeigeQuelle; render(); },
+        }, ui.zeigeQuelle ? 'Original ausblenden' : 'Original anzeigen') : null
+      )
+    );
+
+    if (ui.edit && ui.neuerAbschnitt) {
+      const TYPEN = ['Intro', 'Strophe', 'Vorrefrain', 'Refrain', 'Post-Chorus', 'Bridge', 'Zwischenspiel', 'Solo', 'Outro'];
+      view.append(el('div', { class: 'suffix-chips', style: 'margin-bottom:1rem' },
+        TYPEN.map(typ => el('button', {
+          style: 'border-left: 3px solid ' + sectionColor(typ),
+          onclick: () => {
+            const name = C.freierAbschnittsname(song.abschnitte, typ);
+            song.abschnitte.push({ name, takte: [[], [], [], []] });
+            song.text.push({ ref: name, zeilen: [] });
+            ui.neuerAbschnitt = false;
+            saveState();
+          },
+        }, typ))));
+    }
+
+    if (ui.edit && ui.zeigeQuelle && song.ugQuelle) {
+      view.append(el('pre', { class: 'ug-quelle' }, song.ugQuelle));
+    }
+
+    if (ui.edit) {
+      view.append(renderHeadEdit(song));
+    } else {
+      const meta = el('div', { class: 'meta' },
+        el('span', {}, el('span', { class: 'label' }, 'Tonart'), keyForDisplay(song)),
+        el('span', {}, el('span', { class: 'label' }, 'Takt'), song.taktart || '4/4'),
+        song.tempo ? el('span', {}, el('span', { class: 'label' }, 'Tempo'), String(song.tempo)) : null
+      );
+      view.append(
+        el('div', { class: 'sheet-head' },
+          el('div', {},
+            el('div', { class: 'titel' }, song.titel),
+            el('div', { class: 'kuenstler' }, song.kuenstler || '')
+          ),
+          meta
+        )
+      );
+      // Kein ternary-null in natives append() — das stringifiziert null zu "null"
+      if (song.notizen) view.append(el('div', { class: 'sheet-notizen' }, song.notizen));
+    }
+
+    const lyricsCol = el('div', { class: 'lyrics-col' },
+      song.text.map((block, i) => renderTextBlock(song, block, i))
+    );
+
+    const gridCol = el('div', { class: 'grid-col' },
+      song.abschnitte.map((abschnitt, i) => renderGridSection(song, abschnitt, i))
+    );
+
+    view.append(renderSheetBody(song, lyricsCol, gridCol));
+
+    // Fokus in das aktive Takt-Input setzen
+    if (ui.edit && ui.barSel) {
+      const input = view.querySelector('.bar.aktiv input');
+      if (input) {
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+      }
+    }
+  }
+
+  function render() {
+    const reminder = document.getElementById('export-reminder');
+    if (state._aenderungenSeitExport >= EXPORT_REMINDER_THRESHOLD) {
+      reminder.textContent = state._aenderungenSeitExport +
+        ' Änderungen seit dem letzten Export — bitte sichern (Export-Button oben rechts).';
+      reminder.classList.add('visible');
+    } else {
+      reminder.classList.remove('visible');
+    }
+
+    const view = document.getElementById('view');
+    view.replaceChildren();
+
+    const song = ui.songId ? state.songs.find(s => s.id === ui.songId) : null;
+    let stageSong = null;
+    if (ui.view === 'stage') {
+      if (ui.stageCtx) {
+        const sl = setlistById(ui.stageCtx.setlistId);
+        const eintrag = sl && sl.eintraege[ui.stageCtx.pos];
+        stageSong = eintrag ? songMitOverride(eintrag) : null;
+      } else {
+        stageSong = song;
+      }
+    }
+    document.body.classList.toggle('stage-mode', !!stageSong);
+    const setlist = ui.setlistId ? setlistById(ui.setlistId) : null;
+
+    if (stageSong) {
+      renderStage(view, stageSong);
+    } else if (ui.view === 'setlist' && setlist) {
+      renderSetlist(view, setlist);
+    } else if (ui.view === 'setlistprint' && setlist) {
+      renderSetlistPrint(view, setlist);
+    } else if (ui.view === 'song' && song) {
+      renderSong(view, song);
+      if (!SHARE) history.replaceState(null, '', '#' + encodeURIComponent(song.id));
+    } else if (ui.view === 'import') {
+      renderImport(view);
+    } else if (ui.view === 'irealimport') {
+      renderIrealImport(view);
+    } else if (ui.view === 'einstellungen') {
+      renderEinstellungen(view);
+    } else if (ui.view === 'pdfzuordnung' && ui.pdfZuordnung) {
+      renderPdfZuordnung(view);
+    } else if (SHARE) {
+      if (setlist) { ui.view = 'setlist'; renderSetlist(view, setlist); }
+    } else {
+      ui.view = 'library';
+      renderLibrary(view);
+      history.replaceState(null, '', location.pathname);
+    }
+  }
+
+  // Übergabe vom UG-Userscript: #ugimport=<base64-Text> öffnet die
+  // Import-Ansicht vorbefüllt (siehe ug-import.user.js im Repo).
+  function handleUgImportHash() {
+    if (!location.hash.startsWith('#ugimport=')) return false;
+    const r = C.parseUgImportHash(location.hash);
+    if (r) {
+      ui.importPrefill = r.text;
+      ui.importPrefillTab = r.tabId;
+      ui.view = 'import';
+    } else {
+      console.warn('ugimport-Hash nicht lesbar');
+    }
+    history.replaceState(null, '', location.pathname);
+    return true;
+  }
+
+  // Übergabe eines UG-PDFs vom Userscript: #ugpdf=<tabId>|<titel>|<kuenstler>.
+  // Die Datei liegt als pdf/ug-<tabId>.pdf in der Inbox auf dem Server.
+  function handleUgPdfHash() {
+    if (!location.hash.startsWith('#ugpdf=')) return false;
+    const info = C.parseUgPdfHash(location.hash);
+    history.replaceState(null, '', location.pathname);
+    if (!info || !info.tabId) {
+      console.warn('ugpdf-Hash nicht lesbar');
+      return true;
+    }
+    uebernimmUgPdf(info);
+    return true;
+  }
+
+  async function uebernimmUgPdf(info) {
+    const inbox = 'pdf/ug-' + info.tabId + '.pdf';
+    let blob;
+    try {
+      const res = await fetch(inbox + '?v=' + Date.now());
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      blob = await res.blob();
+    } catch (e) {
+      ui.pdfZuordnung = { info, blob: null, fehler: 'UG-PDF nicht gefunden (' + inbox + ')' };
+      ui.view = 'pdfzuordnung';
+      render();
+      return;
+    }
+    const song = C.songFuerUgPdf(state.songs, info);
+    if (song) {
+      await pdfZuordnen(song, info, blob);
+    } else {
+      ui.pdfZuordnung = { info, blob };
+      ui.view = 'pdfzuordnung';
+      render();
+    }
+  }
+
+  // Inbox-Blob beim Song ablegen, Inbox-Datei löschen, ugTabId merken, Song öffnen.
+  async function pdfZuordnen(song, info, blob) {
+    ui.pdfZuordnung = null;
+    ui.view = 'song'; ui.songId = song.id; ui.edit = false; ui.barSel = null;
+    const datei = new File([blob], 'ug-' + info.tabId + '.pdf', { type: 'application/pdf' });
+    const ok = await ladePdfHoch(song, datei);
+    if (!ok) return; // Statustext steht in der Leiste, Inbox-Datei bleibt liegen
+    if (!song.ugTabId) song.ugTabId = info.tabId;
+    saveState();
+    try { await fetch('pdf/ug-' + info.tabId + '.pdf', { method: 'DELETE' }); } catch (e) { /* Inbox-Rest ist unkritisch */ }
+  }
+
+  function renderPdfZuordnung(view) {
+    const { info, blob, fehler } = ui.pdfZuordnung;
+    const abbrechen = () => { ui.pdfZuordnung = null; ui.view = 'library'; render(); };
+    let suche, liste;
+    const zeichne = () => {
+      const q = suche.value.trim().toLowerCase();
+      const treffer = state.songs.filter(s => !q ||
+        String(s.titel || '').toLowerCase().includes(q) || String(s.kuenstler || '').toLowerCase().includes(q));
+      // replaceChildren nimmt Einzelargumente, kein Array (sonst „[object HTMLButtonElement]“)
+      liste.replaceChildren(...(
+        treffer.length ? treffer.map(s => el('button', {
+          class: 'ireal-fund', style: 'width:100%; text-align:left; cursor:pointer',
+          onclick: () => pdfZuordnen(s, info, blob),
+        }, s.titel + (s.kuenstler ? ' — ' + s.kuenstler : '') + (s.pdf ? ' (hat schon ein PDF)' : '')))
+        : [el('div', { class: 'import-hinweis' }, 'Kein Song passt zur Suche.')]
+      ));
+    };
+    view.append(
+      el('div', { class: 'song-toolbar' },
+        el('button', { class: 'zurueck', style: 'margin-bottom:0', onclick: abbrechen }, 'Abbrechen')
+      ),
+      el('h2', {}, 'UG-PDF zuordnen'),
+      el('p', { class: 'import-hinweis' },
+        'Von Ultimate Guitar kam ein PDF für „' + (info.titel || '?') + '“' +
+        (info.kuenstler ? ' von ' + info.kuenstler : '') + ' (Tab ' + info.tabId + '). ' +
+        (fehler ? fehler : 'Kein Song passt eindeutig — bitte den Song wählen, zu dem das PDF gehört.'))
+    );
+    if (fehler) return;
+    view.append(
+      suche = el('input', { class: 'ug-suche', type: 'search', placeholder: 'Song suchen…', oninput: zeichne,
+        value: info.titel || '' }),
+      liste = el('div', { style: 'margin-top:0.6rem' })
+    );
+    zeichne();
+    if (!state.songs.some(s => String(s.titel || '').toLowerCase().includes(suche.value.trim().toLowerCase()))) {
+      suche.value = '';
+      zeichne();
+    }
+    suche.focus();
+  }
+
+  if (SHARE) {
+    document.body.classList.add('nur-lesen');
+    ladeGeteilteSetliste();
+  } else {
+    handleUgImportHash() || handleUgPdfHash();
+  }
+  // Auch ohne Reload reagieren (Tab war schon offen, Hash ändert sich nur)
+  window.addEventListener('hashchange', () => {
+    if (handleUgImportHash() || handleUgPdfHash()) render();
+  });
+
+  // Direktlink: #song-id öffnet den Song sofort (Bookmarks, Tablet, Druck-Automation)
+  const hashId = SHARE ? '' : decodeURIComponent(location.hash.slice(1));
+  if (hashId && !ui.importPrefill && state.songs.some(s => s.id === hashId)) {
+    ui.view = 'song';
+    ui.songId = hashId;
+  }
+
+  // Druck-Skalierung: Inhaltshöhe bei Druckbreite messen, Schrift stufenlos
+  // verkleinern bis der Song auf eine A4-Seite passt; unterhalb der Mindestgröße
+  // (~66 %, entspricht ca. 9 pt Fließtext) stattdessen Zweiseiten-Umbruch
+  // an Abschnittsgrenzen (break-inside: avoid).
+  window.addEventListener('beforeprint', () => {
+    if (ui.view !== 'song') return;
+    if (ui.edit) { ui.edit = false; ui.barSel = null; render(); }
+    const sheet = document.querySelector('.sheet-body');
+    const head = document.querySelector('.sheet-head');
+    if (!sheet) return;
+    const MM = 96 / 25.4; // CSS-px pro Millimeter
+    const nutzHoehe = (297 - 22) * MM;
+    const druckBreite = (210 - 24) * MM;
+    const main = document.querySelector('main');
+    const alt = { width: main.style.width, maxWidth: main.style.maxWidth, padding: main.style.padding };
+    Object.assign(main.style, { width: druckBreite + 'px', maxWidth: 'none', padding: '0' });
+    const inhaltHoehe = sheet.scrollHeight + (head ? head.offsetHeight : 0) + 30;
+    Object.assign(main.style, alt);
+    let scale = nutzHoehe / inhaltHoehe;
+    if (scale >= 1) scale = 1;
+    // Unter der Lesbarkeitsgrenze: nicht skalieren, sauber umbrechen lassen
+    document.documentElement.style.setProperty('--pscale',
+      scale < 0.66 ? '1' : scale.toFixed(3));
+  });
+
+  document.getElementById('btn-einstellungen').addEventListener('click', () => {
+    ui.view = 'einstellungen';
+    render();
+  });
+  document.getElementById('btn-export').addEventListener('click', exportJson);
+  document.getElementById('btn-import').addEventListener('click', () =>
+    document.getElementById('file-import').click());
+  document.getElementById('file-import').addEventListener('change', (e) => {
+    if (e.target.files[0]) importJson(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  render();
+  planeTeilenAktualisieren(); // geteilte Setlisten beim Öffnen nachziehen
+})();
+</script>
+
+</body>
+</html>
